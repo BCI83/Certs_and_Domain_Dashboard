@@ -1,0 +1,24 @@
+services:
+  backend:
+    image: harbor.bci-devops.com:8443/cert-monitor/cert-monitor:latest
+    container_name: cert-monitor
+    ports:
+      - "54321:54321"
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: always
+    volumes:
+      - .:/cert-monitor
+    command: gunicorn -w 25 -b 0.0.0.0:54321 cert-monitor:app
+    networks:
+      - cmn
+    dns:
+      - 8.8.8.8       # Google's public DNS
+      - 8.8.4.4       # Google's secondary DNS
+      - 1.1.1.1       # Cloudflare DNS (optional)
+
+networks:
+  cmn:
+    driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: 1460

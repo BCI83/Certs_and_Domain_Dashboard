@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+
+    <div class="text-center">
+        <h1>Domain and Certificate Expiry Dashboard</h1>
+    </div>
+
+    <!-- Form to add new site -->
+    <form method="POST" action="{{ url_for('add_site_route') }}">
+        Add new site : <input type="text" name="domain" placeholder="sub.domain.com">
+        <input type="submit" value="Add Site">
+    </form>
+
+    <!-- Domain columns container -->
+    <div class="domain-columns-container">
+        {% if sites %}
+            {% for main_domain, site_list in sites.items() %}
+                <div class="domain-column">
+                    <h2>{{ main_domain }}</h2>
+
+                    <!-- WHOIS lease expiry date -->
+                    <div class="lease-expiry">
+                        {% if site_list[0].domain == main_domain %}
+                            {% set whois_color = 'green' if site_list[0].expiry and site_list[0].expiry > now + timedelta(days=30) else 'orange' if site_list[0].expiry and site_list[0].expiry > now + timedelta(days=7) else 'red' %}
+                            <span style="color: {{ whois_color }};">
+                                Domain Lease Expiry - {{ site_list[0].expiry.strftime('%d %b %Y') }}
+                            </span>
+                        {% endif %}
+                    </div>
+
+                    <!-- Subdomain List -->
+		<ul>
+			{% for site in site_list %}
+				{% if site.domain != main_domain %}
+					{% set color = 'green' if site['expiry'] and site['expiry'] > now + timedelta(days=30) else 'orange' if site['expiry'] and site['expiry'] > now + timedelta(days=7) else 'red' %}
+					<li style="color: {{ color }};">
+						<button class="remove-button" onclick="confirmDelete('{{ site['domain'] }}')" title="Delete">🗑️</button>
+
+						{% if site['expiry'] %}
+							<span title="{{ site['expiry'].strftime('%H:%M:%S UTC') }}">
+								{{ site['expiry'].strftime('%d %b %Y') }}
+							</span> -
+						{% else %}
+							Unknown expiry -
+						{% endif %}
+
+						{% if site['verification_status'] == 'green' %}
+							<span style="color: green" title="Certificate chain verified">✔</span>
+						{% elif site['verification_status'] == 'red' %}
+							<span style="color: red" title="Unable to verify certificate chain">✔</span>
+						{% endif %}
+
+						<!-- If you do not need this link, just remove or comment it out -->
+						<a href="{{ url_for('site_detail', domain=site['domain']) }}">{{ site['domain'].replace('https://', '').replace('http://', '') }}</a>
+					</li>
+				{% endif %}
+			{% endfor %}
+		</ul>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p>No sites added yet.</p>
+        {% endif %}
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmation-modal" class="modal">
+        <div class="modal-content">
+            <span id="modal-text"></span>
+            <p>(this action can't be undone)</p>
+            <!-- Yes button calls confirmDeletion() -->
+            <button id="confirm-yes" onclick="confirmDeletion()">Yes</button>
+            <!-- Cancel button calls closeModal() -->
+            <button id="confirm-cancel" onclick="closeModal()">Cancel</button>
+        </div>
+    </div>
+
+    <script>
+        let currentSite = '';
+
+        // Function to open the delete confirmation modal
+        function confirmDelete(site) {
+            console.log("Confirm delete for site: " + site);
+            currentSite = site;
+            document.getElementById('modal-text').textContent = `Are you sure you want to remove ${site}?`;
+            document.getElementById('confirmation-modal').style.display = 'flex';
+        }
+
+        // Function to close the modal
+        function closeModal() {
+            console.log("Modal closed");
+            document.getElementById('confirmation-modal').style.display = 'none';
+            currentSite = '';
+        }
+
+        // Function to confirm deletion and send the POST request to delete the site
+        function confirmDeletion() {
+            if (currentSite) {
+                console.log("Attempting to delete site: " + currentSite);
+
+                // Remove "https://" or "http://" from the domain for the request
+                const cleanedSite = currentSite.replace(/^https?:\/\//, '').trim();  // Trim spaces and remove protocol
+
+                fetch(`/delete_site/${encodeURIComponent(cleanedSite)}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                }).then(response => {
+                    if (response.ok) {
+                        console.log("Site deleted successfully.");
+                        window.location.reload();  // Reload the page to reflect changes
+                    } else {
+                        console.error("Error deleting site:", response.status);
+                    }
+                }).catch(error => {
+                    console.error('Fetch error:', error);
+                });
+            } else {
+                console.error("No site selected for deletion.");
+            }
+            closeModal();
+        }
+    </script>
+
+</body>
+</html>
+
