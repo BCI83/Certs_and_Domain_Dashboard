@@ -97,27 +97,30 @@ def load_sites():
         for main_domain in os.listdir(SITES_DIR):
             domain_path = os.path.join(SITES_DIR, main_domain)
             if os.path.isdir(domain_path):
-                sites[main_domain] = []
+                if main_domain not in sites:
+                    sites[main_domain] = []
 
                 # Get WHOIS expiration date for the main domain
                 whois_expiry = get_whois_expiry(main_domain)
                 logging.debug(f"WHOIS expiry for {main_domain}: {whois_expiry} (type: {type(whois_expiry)})")
 
+                # Add main domain WHOIS expiry if not already added
                 if whois_expiry:
-                    # Ensure whois_expiry is timezone-aware
-                    if whois_expiry.tzinfo is None:
-                        whois_expiry = whois_expiry.replace(tzinfo=pytz.UTC)
+                    if not any(item['domain'] == main_domain for item in sites[main_domain]):
+                        sites[main_domain].append({
+                            'domain': main_domain,
+                            'expiry': whois_expiry,
+                            'verification_status': 'green' if whois_expiry > datetime.datetime.now(pytz.UTC) else 'red'
+                        })
 
-                    sites[main_domain].append({
-                        'domain': main_domain,
-                        'expiry': whois_expiry,
-                        'verification_status': 'green' if whois_expiry > datetime.datetime.now(pytz.UTC) else 'red'
-                    })
-
-                # Process subdomains as usual
+                # Process subdomains
                 for subdomain_file in os.listdir(domain_path):
                     with open(os.path.join(domain_path, subdomain_file), 'r') as f:
                         subdomain = f.read().strip()
+
+                        # Normalize subdomain (removing the port for grouping purposes)
+                        subdomain_base = subdomain.split(':')[0]
+
                         expiry, status = get_certificate_expiry(subdomain)
 
                         # Ensure certificate expiry is timezone-aware
@@ -126,12 +129,16 @@ def load_sites():
 
                         logging.debug(f"Certificate expiry for {subdomain}: {expiry} (type: {type(expiry)})")
 
-                        sites[main_domain].append({
-                            'domain': subdomain,
-                            'expiry': expiry,
-                            'verification_status': status
-                        })
+                        # Check if subdomain with base domain is already added; if not, add the full subdomain
+                        if not any(item['domain'] == subdomain_base for item in sites[main_domain]):
+                            sites[main_domain].append({
+                                'domain': subdomain,
+                                'expiry': expiry,
+                                'verification_status': status
+                            })
+
     return sites
+
 
 @app.route('/')
 def dashboard():
@@ -147,38 +154,72 @@ def site_detail(domain):
 @app.route('/add_site', methods=['POST'])
 def add_site_route():
     domain = request.form['domain'].strip()
+
+    # Remove trailing slash if present
+    domain = domain.rstrip('/')
+
+    # Prepend https:// if the domain doesn't start with http or https
     if not domain.startswith('https://') and not domain.startswith('http://'):
         domain = f'https://{domain}'
+
+    # Remove the protocol
     domain_without_protocol = domain.replace("https://", "").replace("http://", "")
-    domain_parts = domain_without_protocol.split('.')
+
+    # Remove port if present
+    domain_without_port = domain_without_protocol.split(':')[0]
+
+    # Validate that the domain has at least two parts (e.g., example.com)
+    domain_parts = domain_without_port.split('.')
     if len(domain_parts) < 2:
         return "Invalid domain", 400
+
+    # Extract the main domain (e.g., "example.com")
     main_domain = domain_parts[-2] + '.' + domain_parts[-1]
+
+    # Create domain folder for the main domain if it doesn't exist
     domain_path = os.path.join(SITES_DIR, main_domain)
     if not os.path.exists(domain_path):
         os.makedirs(domain_path)
+
+    # Create a file for the subdomain (with or without port) in the main domain's folder
     subdomain_file = os.path.join(domain_path, domain_without_protocol + ".txt")
     if not os.path.exists(subdomain_file):
         with open(subdomain_file, "w") as f:
-            f.write(domain)
+            f.write(domain)  # Store the subdomain URL
+
     return redirect(url_for('dashboard'))
 
 @app.route('/delete_site/<domain>', methods=['POST'])
 def delete_site(domain):
     try:
-        main_domain = domain.split('.')[-2] + '.' + domain.split('.')[-1]
+        # Remove protocol and trailing slash
+        domain_cleaned = domain.replace("https://", "").replace("http://", "").rstrip('/')
+
+        # Extract main domain and file path
+        main_domain = domain_cleaned.split(':')[0].split('.')[-2] + '.' + domain_cleaned.split(':')[0].split('.')[-1]
         domain_path = os.path.join(SITES_DIR, main_domain)
-        subdomain_file = os.path.join(domain_path, domain.replace("https://", "").replace("http://", "") + ".txt")
+
+        # Find the correct subdomain file
+        subdomain_file = os.path.join(domain_path, domain_cleaned + ".txt")
+
+        # Check if the file exists and remove it
         if os.path.exists(subdomain_file):
             os.remove(subdomain_file)
+            logging.info(f"Removed subdomain file: {subdomain_file}")
+
+            # Check if the directory is now empty, and remove it if necessary
             if len(os.listdir(domain_path)) == 0:
                 os.rmdir(domain_path)
-            return '', 204
+                logging.info(f"Removed main domain directory: {domain_path}")
+
+            return '', 204  # No content
         else:
+            logging.error(f"Subdomain file not found: {subdomain_file}")
             return 'Subdomain not found', 404
     except Exception as e:
+        logging.error(f"Error deleting site {domain}: {e}")
         return str(e), 500
+
 
 if __name__ == '__main__':
     app.run(debug=True)
-
