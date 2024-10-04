@@ -6,19 +6,32 @@ services:
       - "54321:54321"
     environment:
       - PYTHONUNBUFFERED=1
+      - SQLALCHEMY_DATABASE_URI=postgresql://certmonitoruser:your_password_here@db:5432/certmonitor
     restart: always
     volumes:
       - .:/cert-monitor
     command: gunicorn -w 25 -b 0.0.0.0:54321 cert-monitor:app
+    depends_on:
+      - db
     networks:
       - cmn
-    dns:
-      - 8.8.8.8       # Google's public DNS
-      - 8.8.4.4       # Google's secondary DNS
-      - 1.1.1.1       # Cloudflare DNS (optional)
+
+  db:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: certmonitoruser
+      POSTGRES_PASSWORD: your_password_here
+      POSTGRES_DB: certmonitor
+    volumes:
+      - certmonitor_data:/var/lib/postgresql/data
+    networks:
+      - cmn
 
 networks:
   cmn:
     driver: bridge
     driver_opts:
       com.docker.network.driver.mtu: 1460
+
+volumes:
+  certmonitor_data:

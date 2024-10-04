@@ -1,5 +1,8 @@
-Flask>=2.3.0
-Werkzeug>=2.3.0
-gunicorn==20.1.0
+Flask
+Werkzeug
+gunicorn
 pyOpenSSL
 pytz
+psycopg2-binary
+SQLAlchemy
+Flask-SQLAlchemy

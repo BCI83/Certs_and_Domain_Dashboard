@@ -118,3 +118,56 @@ a:hover {
     cursor: pointer;
 }
 
+/* Style for the text area in subdomain detail */
+.notes-form {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 80%;
+    margin: 0 auto;
+}
+
+.notes-form textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid lightsteelblue;
+    border-radius: 5px;
+    font-size: 16px;
+    margin-bottom: 10px;
+}
+
+/* Buttons section under the text area */
+.form-buttons {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.cancel-button, .save-button {
+    padding: 8px 16px;
+    text-decoration: none;
+    background-color: lightsteelblue;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    color: black;
+    text-align: center;
+}
+
+.cancel-button {
+    background-color: transparent;
+    color: lightsteelblue;
+    border: 1px solid lightsteelblue;
+}
+
+.cancel-button:hover, .save-button:hover {
+    background-color: #b0c4de;
+}
+
+.save-button {
+    width: 100px;
+    background-color: lightsteelblue;
+    border: 1px solid lightsteelblue;
+    cursor: pointer;
+    margin-left: 10px;
+}

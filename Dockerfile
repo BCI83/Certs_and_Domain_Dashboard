@@ -13,4 +13,3 @@ EXPOSE 54321
 ENV FLASK_APP=cert-monitor.py
 
 CMD ["gunicorn", "-w", "25", "-b", "0.0.0.0:54321", "cert-monitor:app"]
-

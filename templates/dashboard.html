@@ -14,7 +14,7 @@
 
     <!-- Form to add new site -->
     <form method="POST" action="{{ url_for('add_site_route') }}">
-        Add new site : <input type="text" name="domain" placeholder="sub.domain.com">
+        <input type="text" name="domain" placeholder="sub.domain.com">
         <input type="submit" value="Add Site">
     </form>
 
@@ -27,42 +27,47 @@
 
                     <!-- WHOIS lease expiry date -->
                     <div class="lease-expiry">
-                        {% if site_list[0].domain == main_domain %}
+                        {% if site_list and site_list[0].domain == main_domain %}
                             {% set whois_color = 'green' if site_list[0].expiry and site_list[0].expiry > now + timedelta(days=30) else 'orange' if site_list[0].expiry and site_list[0].expiry > now + timedelta(days=7) else 'red' %}
-                            <span style="color: {{ whois_color }};">
-                                Domain Lease Expiry - {{ site_list[0].expiry.strftime('%d %b %Y') }}
+                            <span style="color: lightsteelblue;">
+                                Domain Lease Expiry -
+                                <span style="color: {{ whois_color }};">{{ site_list[0].expiry.strftime('%d %b %Y') }}</span>
                             </span>
                         {% endif %}
                     </div>
 
                     <!-- Subdomain List -->
-		<ul>
-			{% for site in site_list %}
-				{% if site.domain != main_domain %}
-					{% set color = 'green' if site['expiry'] and site['expiry'] > now + timedelta(days=30) else 'orange' if site['expiry'] and site['expiry'] > now + timedelta(days=7) else 'red' %}
-					<li style="color: {{ color }};">
-						<button class="remove-button" onclick="confirmDelete('{{ site['domain'] }}')" title="Delete">🗑️</button>
+                    <ul>
+                        {% for site in site_list %}
+                            {% if site.domain != main_domain %}
+                                {% set color = 'green' if site['expiry'] and site['expiry'] > now + timedelta(days=30) else 'orange' if site['expiry'] and site['expiry'] > now + timedelta(days=7) else 'red' %}
+                                <li style="color: {{ color }};">
+                                    <button class="remove-button" onclick="confirmDelete('{{ site['domain'] }}')" title="Delete">🗑️</button>
 
-						{% if site['expiry'] %}
-							<span title="{{ site['expiry'].strftime('%H:%M:%S UTC') }}">
-								{{ site['expiry'].strftime('%d %b %Y') }}
-							</span> -
-						{% else %}
-							Unknown expiry -
-						{% endif %}
+                                {% if site['expiry'] %}
+                                        <span title="{{ site['expiry'].strftime('%H:%M:%S UTC') }}">
+                                                {{ site['expiry'].strftime('%d %b %Y') }}
+                                        </span> -
+                                {% else %}
+                                        <span style="color: red;">Unknown expiry</span> -
+                                {% endif %}
 
-						{% if site['verification_status'] == 'green' %}
-							<span style="color: green" title="Certificate chain verified">✔</span>
-						{% elif site['verification_status'] == 'red' %}
-							<span style="color: red" title="Unable to verify certificate chain">✔</span>
-						{% endif %}
+                                {% if site['verification_status'] == 'green' %}
+                                        <span style="color: green" title="Certificate chain verified">✔</span>
+                                {% elif site['verification_status'] == 'red' %}
+                                        <span style="color: red" title="Unable to verify certificate chain">✔</span>
+                                {% else %}
+                                        <span style="color: gray;">No verification status</span>
+                                {% endif %}
 
-						<!-- If you do not need this link, just remove or comment it out -->
-						<a href="{{ url_for('site_detail', domain=site['domain']) }}">{{ site['domain'].replace('https://', '').replace('http://', '') }}</a>
-					</li>
-				{% endif %}
-			{% endfor %}
-		</ul>
+                                    <!-- Subdomain name in lightsteelblue color with link to detail page -->
+                                   <a href="{{ url_for('subdomain_detail', subdomain_id=site['id']) }}" style="color: lightsteelblue;">
+    {{ site['domain'].replace('https://', '').replace('http://', '') }}
+</a>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+                    </ul>
                 </div>
             {% endfor %}
         {% else %}
@@ -106,7 +111,7 @@
                 console.log("Attempting to delete site: " + currentSite);
 
                 // Remove "https://" or "http://" from the domain for the request
-                const cleanedSite = currentSite.replace(/^https?:\/\//, '').trim();  // Trim spaces and remove protocol
+                const cleanedSite = currentSite.replace(/^https?:\/\//, '').replace('/', '').trim();  // Trim spaces and remove protocol and trailing slashes
 
                 fetch(`/delete_site/${encodeURIComponent(cleanedSite)}`, {
                     method: 'POST',
@@ -132,4 +137,3 @@
 
 </body>
 </html>
-
