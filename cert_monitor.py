@@ -10,8 +10,7 @@ import socket
 import logging
 import subprocess
 
-# Set up basic logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.WARNING)
 
 app = Flask(__name__)
 
@@ -66,7 +65,7 @@ def get_certificate_expiry(domain):
                 logging.debug(f"Certificate expiry for {domain}: {expiry_date}")
                 return expiry_date, 'green'
     except Exception as e:
-        logging.warning(f"Verification failed for {domain}: {e}")
+        logging.debug(f"Verification failed for {domain}: {e}")
 
     try:
         context = ssl._create_unverified_context()
@@ -245,7 +244,7 @@ def add_site_route():
     if not subdomain:
         # Perform the certificate expiry check for the subdomain
         expiry_date, verification_status = get_certificate_expiry(domain_without_protocol)
-        
+
         # Create the subdomain and populate the last_update field
         subdomain = Subdomain(subdomain_name=domain_without_protocol, domain_id=new_domain.id, expiry_date=expiry_date,
                               verification_status=verification_status, last_update=datetime.datetime.now(pytz.UTC))
@@ -253,6 +252,7 @@ def add_site_route():
         db.session.commit()
 
     return redirect(url_for('dashboard'))
+
 
 @app.route('/subdomain/<int:subdomain_id>', methods=['GET', 'POST'])
 def subdomain_detail(subdomain_id):
