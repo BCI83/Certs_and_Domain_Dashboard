@@ -6,13 +6,14 @@ services:
       - "54321:54321"
     environment:
       - PYTHONUNBUFFERED=1
-      - SQLALCHEMY_DATABASE_URI=postgresql://certmonitoruser:your_password_here@db:5432/certmonitor
+      - SQLALCHEMY_DATABASE_URI=postgresql://certmonitoruser:your_password_here@db:5432/certmonitor      
       - UPDATE_INTERVAL=2  # How many minutes between cert/domain expiry checks
       - PYTHONPATH=/cert-monitor
     restart: always
     volumes:
       - .:/cert-monitor
     command: bash -c "gunicorn -w 25 -b 0.0.0.0:54321 cert_monitor:app & python update_data.py"
+
     depends_on:
       - db
     networks:

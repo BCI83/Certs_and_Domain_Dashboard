@@ -91,7 +91,8 @@ def update_expiry_data():
 if __name__ == "__main__":
     while not shutdown_flag:
         update_expiry_data()
-        for _ in range(60):  # Sleep for 1 minute, checking for shutdown signal every second
+
+        # Sleep in small increments to handle SIGTERM quickly
+        for _ in range(60 * UPDATE_INTERVAL):  # Sleep for UPDATE_INTERVAL minutes, checking every second
             if shutdown_flag:
                 break
-            time.sleep(1)
