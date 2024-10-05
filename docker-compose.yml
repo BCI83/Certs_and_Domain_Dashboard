@@ -7,7 +7,7 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - SQLALCHEMY_DATABASE_URI=postgresql://certmonitoruser:your_password_here@db:5432/certmonitor
-      - UPDATE_INTERVAL=2  # Update script refresh Interval in minutes
+      - UPDATE_INTERVAL=2  # How many minutes between cert/domain expiry checks
       - PYTHONPATH=/cert-monitor
     restart: always
     volumes:
