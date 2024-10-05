@@ -1,15 +1,25 @@
 from cert_monitor import get_certificate_expiry, get_whois_expiry, db, Domain, Subdomain, app
+import signal
 import datetime
 import os
 import pytz
 import time
 import logging
-
+.
 # Set logging level to WARNING to avoid DEBUG logs
 logging.basicConfig(level=logging.WARNING)
 
 # Get update interval from environment variables (default to 60 minutes)
 UPDATE_INTERVAL = int(os.getenv('UPDATE_INTERVAL', 60))
+shutdown_flag = False
+
+def signal_handler(signum, frame):
+    global shutdown_flag
+    shutdown_flag = True
+    print("Received shutdown signal, exiting...")
+
+# Register signal handler for SIGTERM
+signal.signal(signal.SIGTERM, signal_handler)
 
 def update_expiry_data():
     with app.app_context():  # Ensure Flask app context is available
@@ -79,6 +89,9 @@ def update_expiry_data():
         db.session.commit()
 
 if __name__ == "__main__":
-    while True:
+    while not shutdown_flag:
         update_expiry_data()
-        time.sleep(60)  # Sleep for 1 minute before checking again
+        for _ in range(60):  # Sleep for 1 minute, checking for shutdown signal every second
+            if shutdown_flag:
+                break
+            time.sleep(1)
