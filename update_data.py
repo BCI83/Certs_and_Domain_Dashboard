@@ -5,7 +5,7 @@ import os
 import pytz
 import time
 import logging
-.
+
 # Set logging level to WARNING to avoid DEBUG logs
 logging.basicConfig(level=logging.WARNING)
 
