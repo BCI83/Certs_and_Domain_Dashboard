@@ -235,8 +235,8 @@ def add_site_route():
         # Perform WHOIS lookup for the main domain lease expiry
         whois_expiry = get_whois_expiry(main_domain)
 
-        # Create new main domain entry with WHOIS expiry data
-        new_domain = Domain(domain_name=main_domain, whois_expiry=whois_expiry)
+        # Create new main domain entry with WHOIS expiry data and populate the last_update field
+        new_domain = Domain(domain_name=main_domain, whois_expiry=whois_expiry, last_update=datetime.datetime.now(pytz.UTC))
         db.session.add(new_domain)
         db.session.commit()
 
@@ -245,7 +245,10 @@ def add_site_route():
     if not subdomain:
         # Perform the certificate expiry check for the subdomain
         expiry_date, verification_status = get_certificate_expiry(domain_without_protocol)
-        subdomain = Subdomain(subdomain_name=domain_without_protocol, domain_id=new_domain.id, expiry_date=expiry_date, verification_status=verification_status)
+        
+        # Create the subdomain and populate the last_update field
+        subdomain = Subdomain(subdomain_name=domain_without_protocol, domain_id=new_domain.id, expiry_date=expiry_date,
+                              verification_status=verification_status, last_update=datetime.datetime.now(pytz.UTC))
         db.session.add(subdomain)
         db.session.commit()
 

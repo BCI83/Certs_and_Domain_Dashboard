@@ -55,7 +55,7 @@
                                 {% if site['verification_status'] == 'green' %}
                                         <span style="color: green" title="Certificate chain verified">✔</span>
                                 {% elif site['verification_status'] == 'red' %}
-                                        <span style="color: red" title="Unable to verify certificate chain">✔</span>
+                                        <span style="color: red" title="Unable to verify certificate (likely missing the full chain)">✔</span>
                                 {% else %}
                                         <span style="color: gray;">No verification status</span>
                                 {% endif %}
