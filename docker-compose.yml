@@ -7,10 +7,12 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - SQLALCHEMY_DATABASE_URI=postgresql://certmonitoruser:your_password_here@db:5432/certmonitor
+      - UPDATE_INTERVAL=2  # Update script refresh Interval in minutes
+      - PYTHONPATH=/cert-monitor
     restart: always
     volumes:
       - .:/cert-monitor
-    command: gunicorn -w 25 -b 0.0.0.0:54321 cert-monitor:app
+    command: bash -c "gunicorn -w 25 -b 0.0.0.0:54321 cert_monitor:app & python update_data.py"
     depends_on:
       - db
     networks:
