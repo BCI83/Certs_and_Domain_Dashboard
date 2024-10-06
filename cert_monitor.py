@@ -79,7 +79,7 @@ def get_certificate_expiry(domain):
                 logging.debug(f"Unverified certificate expiry for {domain}: {expiry_date}")
                 return expiry_date, 'red'
     except Exception as e:
-        logging.error(f"Error fetching certificate for {domain}: {e}")
+        logging.debug(f"Error fetching certificate for {domain}: {e}")
         return None, 'error'
 
 def get_whois_expiry(domain):
