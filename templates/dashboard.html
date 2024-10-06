@@ -39,7 +39,6 @@
                     <!-- Subdomain List -->
                     <ul>
                         {% for site in site_list %}
-                            {% if site.domain != main_domain %}
                                 {% set color = 'green' if site['expiry'] and site['expiry'] > now + timedelta(days=30) else 'orange' if site['expiry'] and site['expiry'] > now + timedelta(days=7) else 'red' %}
                                 <li style="color: {{ color }};">
                                     <button class="remove-button" onclick="confirmDelete('{{ site['domain'] }}')" title="Delete">🗑️</button>
@@ -65,7 +64,6 @@
     {{ site['domain'].replace('https://', '').replace('http://', '') }}
 </a>
                                 </li>
-                            {% endif %}
                         {% endfor %}
                     </ul>
                 </div>
