@@ -25,45 +25,47 @@
                 <div class="domain-column">
                     <h2>{{ main_domain }}</h2>
 
-                    <!-- WHOIS lease expiry date -->
+                    <!-- WHOIS lease expiry date for main domain -->
                     <div class="lease-expiry">
-                        {% if site_list and site_list[0].domain == main_domain %}
-                            {% set whois_color = 'green' if site_list[0].expiry and site_list[0].expiry > now + timedelta(days=30) else 'orange' if site_list[0].expiry and site_list[0].expiry > now + timedelta(days=7) else 'red' %}
+                        {% if site_list[0]['whois_expiry'] %}
+                            {% set whois_color = 'green' if site_list[0]['whois_expiry'] > now + timedelta(days=30) else 'orange' if site_list[0]['whois_expiry'] > now + timedelta(days=7) else 'red' %}
                             <span style="color: lightsteelblue;">
                                 Domain Lease Expiry -
-                                <span style="color: {{ whois_color }};">{{ site_list[0].expiry.strftime('%d %b %Y') }}</span>
+                                <span style="color: {{ whois_color }};">{{ site_list[0]['whois_expiry'].strftime('%d %b %Y') }}</span>
                             </span>
                         {% endif %}
                     </div>
 
-                    <!-- Subdomain List -->
+                    <!-- Subdomain List (starting from site_list[1:]) -->
                     <ul>
-                        {% for site in site_list %}
-                                {% set color = 'green' if site['expiry'] and site['expiry'] > now + timedelta(days=30) else 'orange' if site['expiry'] and site['expiry'] > now + timedelta(days=7) else 'red' %}
-                                <li style="color: {{ color }};">
-                                    <button class="remove-button" onclick="confirmDelete('{{ site['domain'] }}')" title="Delete">🗑️</button>
+                        {% for site in site_list[1:] %}
+                            {% set color = 'green' if site['expiry'] and site['expiry'] > now + timedelta(days=30) else 'orange' if site['expiry'] and site['expiry'] > now + timedelta(days=7) else 'red' %}
+                            <li style="color: {{ color }};">
+                                <button class="remove-button" onclick="confirmDelete('{{ site['domain'] }}')" title="Delete">🗑️</button>
 
+                                <!-- Display expiry date or Unknown if not available -->
                                 {% if site['expiry'] %}
-                                        <span title="{{ site['expiry'].strftime('%H:%M:%S UTC') }}">
-                                                {{ site['expiry'].strftime('%d %b %Y') }}
-                                        </span> -
+                                    <span title="{{ site['expiry'].strftime('%H:%M:%S UTC') }}">
+                                        {{ site['expiry'].strftime('%d %b %Y') }}
+                                    </span> -
                                 {% else %}
-                                        <span style="color: red;">Unknown expiry</span> -
+                                    <span style="color: red;">Unknown</span> -
+                                    <span style="color: red;" title="No certificate info">✘</span>
                                 {% endif %}
 
+                                <!-- Verification status for each subdomain -->
                                 {% if site['verification_status'] == 'green' %}
-                                        <span style="color: green" title="Certificate chain verified">✔</span>
-                                {% elif site['verification_status'] == 'red' %}
-                                        <span style="color: red" title="Unable to verify certificate (likely missing the full chain)">✔</span>
-                                {% else %}
-                                        <span style="color: gray;">No verification status</span>
+                                    <span style="color: green" title="Certificate chain verified">✔</span>
+                                {% elif site['expiry'] and site['verification_status'] == 'red' %}
+                                    <!-- Show orange tick if there's a certificate but it's invalid -->
+                                    <span style="color: orange" title="Unable to verify certificate (likely missing chain)">✔</span>
                                 {% endif %}
 
-                                    <!-- Subdomain name in lightsteelblue color with link to detail page -->
-                                   <a href="{{ url_for('subdomain_detail', subdomain_id=site['id']) }}" style="color: lightsteelblue;">
-    {{ site['domain'].replace('https://', '').replace('http://', '') }}
-</a>
-                                </li>
+                                <!-- Subdomain name with link to details -->
+                                <a href="{{ url_for('subdomain_detail', subdomain_id=site['id']) }}" style="color: lightsteelblue;">
+                                    {{ site['domain'] }}
+                                </a>
+                            </li>
                         {% endfor %}
                     </ul>
                 </div>
@@ -90,7 +92,6 @@
 
         // Function to open the delete confirmation modal
         function confirmDelete(site) {
-            console.log("Confirm delete for site: " + site);
             currentSite = site;
             document.getElementById('modal-text').textContent = `Are you sure you want to remove ${site}?`;
             document.getElementById('confirmation-modal').style.display = 'flex';
@@ -98,7 +99,6 @@
 
         // Function to close the modal
         function closeModal() {
-            console.log("Modal closed");
             document.getElementById('confirmation-modal').style.display = 'none';
             currentSite = '';
         }
@@ -106,10 +106,7 @@
         // Function to confirm deletion and send the POST request to delete the site
         function confirmDeletion() {
             if (currentSite) {
-                console.log("Attempting to delete site: " + currentSite);
-
-                // Remove "https://" or "http://" from the domain for the request
-                const cleanedSite = currentSite.replace(/^https?:\/\//, '').replace('/', '').trim();  // Trim spaces and remove protocol and trailing slashes
+                const cleanedSite = currentSite.replace(/^https?:\/\//, '').replace('/', '').trim();
 
                 fetch(`/delete_site/${encodeURIComponent(cleanedSite)}`, {
                     method: 'POST',
@@ -118,7 +115,6 @@
                     }
                 }).then(response => {
                     if (response.ok) {
-                        console.log("Site deleted successfully.");
                         window.location.reload();  // Reload the page to reflect changes
                     } else {
                         console.error("Error deleting site:", response.status);
@@ -126,8 +122,6 @@
                 }).catch(error => {
                     console.error('Fetch error:', error);
                 });
-            } else {
-                console.error("No site selected for deletion.");
             }
             closeModal();
         }

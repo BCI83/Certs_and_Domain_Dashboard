@@ -1,11 +1,11 @@
 from flask import Flask, render_template, redirect, url_for, request
-from flask_sqlalchemy import SQLAlchemy
+from flask_sqlalchemy import SQLAlchemy # type: ignore
 import datetime
 from datetime import timedelta
-import pytz
+import pytz # type: ignore
 import ssl
 import re
-import OpenSSL
+import OpenSSL # type: ignore
 import socket
 import logging
 import subprocess
@@ -126,10 +126,10 @@ def load_sites():
 
     # Loop through all domains and process WHOIS expiry
     for domain in all_domains:
-        sites[domain.domain_name] = []
+        # Add the main domain's WHOIS expiry to the sites dictionary
         whois_expiry = domain.whois_expiry
+        sites[domain.domain_name] = []
 
-        # WHOIS expiry check
         if whois_expiry:
             # Ensure whois_expiry is timezone-aware
             if whois_expiry.tzinfo is None:
@@ -138,13 +138,13 @@ def load_sites():
             now_aware = datetime.datetime.now(pytz.UTC)  # Make current time timezone-aware
             color = 'green' if whois_expiry > now_aware else 'red'
             sites[domain.domain_name].append({
-                'id': domain.id,  # Ensure domain id is passed
+                'id': domain.id,
                 'domain': domain.domain_name,
-                'expiry': whois_expiry,
+                'whois_expiry': whois_expiry,  # Note: We now use 'whois_expiry' for main domains
                 'verification_status': color
             })
 
-        # Subdomains and their expiry
+        # Fetch subdomains linked to this domain
         subdomains = Subdomain.query.filter_by(domain_id=domain.id).all()
 
         for subdomain in subdomains:
@@ -154,7 +154,7 @@ def load_sites():
             if expiry and expiry.tzinfo is None:
                 expiry = expiry.replace(tzinfo=pytz.UTC)
 
-            # Define color logic for the certificate expiry
+            now_aware = datetime.datetime.now(pytz.UTC)  # Make current time timezone-aware
             if expiry:
                 if expiry > now_aware + timedelta(days=30):
                     color = 'green'
@@ -165,17 +165,18 @@ def load_sites():
             else:
                 color = 'red'
 
-            # Use verification_status from the database or fallback to calculated color
             verification_status = subdomain.verification_status or color
 
+            # Add subdomain entry to the corresponding main domain
             sites[domain.domain_name].append({
-                'id': subdomain.id,  # Ensure subdomain ID is included
+                'id': subdomain.id,
                 'domain': subdomain.subdomain_name,
                 'expiry': expiry,
-                'verification_status': verification_status  # Pass the correct verification status
+                'verification_status': verification_status  # Pass the verification status
             })
 
     return sites
+
 
 @app.route('/')
 def dashboard():
