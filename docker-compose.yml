@@ -15,7 +15,7 @@ services:
     restart: always
     volumes:
       - .:/cert-monitor
-    command: bash -c "gunicorn -w 25 -b 0.0.0.0:54321 cert_monitor:app & python update_data.py"
+    command: bash -c "service postfix start && gunicorn -w 25 -b 0.0.0.0:54321 cert_monitor:app & python update_data.py"
 
     depends_on:
       - db

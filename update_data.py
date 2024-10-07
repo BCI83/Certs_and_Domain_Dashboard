@@ -2,7 +2,7 @@ from cert_monitor import get_certificate_expiry, get_whois_expiry, db, Domain, S
 import signal
 import datetime
 import os
-import pytz
+import pytz # type: ignore
 import time
 import logging
 import subprocess
