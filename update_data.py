@@ -102,11 +102,20 @@ def send_email(to_address, subject, body_file, from_address="Symphony Certificat
 
 def has_email_been_sent_today():
     if os.path.exists(LAST_EMAIL_SENT_FILE):
-        with open(LAST_EMAIL_SENT_FILE, 'r') as f:
-            last_sent_str = f.read().strip()
-            last_sent_date = datetime.datetime.strptime(last_sent_str, "%Y-%m-%d").date()
-            return last_sent_date == datetime.datetime.utcnow().date()
+        try:
+            with open(LAST_EMAIL_SENT_FILE, 'r') as f:
+                last_sent_str = f.read().strip()
+                if last_sent_str:  # Ensure the file is not empty
+                    last_sent_date = datetime.datetime.strptime(last_sent_str, "%Y-%m-%d").date()
+                    return last_sent_date == datetime.datetime.utcnow().date()
+                else:
+                    print("No valid date in last_email_sent.txt, assuming email has not been sent today.")
+                    return False
+        except ValueError:
+            print("Invalid date format in last_email_sent.txt, assuming email has not been sent today.")
+            return False
     return False
+
 
 def mark_email_as_sent_today():
     with open(LAST_EMAIL_SENT_FILE, 'w') as f:
