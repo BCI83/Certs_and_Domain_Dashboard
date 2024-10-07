@@ -1,6 +1,9 @@
 FROM python:3.10-slim
 
-RUN apt-get update && apt-get install -y curl iputils-ping dnsutils whois mailutils
+RUN apt-get update && apt-get install -y curl iputils-ping dnsutils whois sendmail
+
+# Enable the sendmail service
+RUN systemctl enable sendmail
 
 WORKDIR /cert-monitor
 
