@@ -2,6 +2,9 @@ services:
   backend:
     image: cert-monitor/cert-monitor:latest
     container_name: cert-monitor
+    hostname: certificate
+    extra_hosts:
+      - "certificate.monitor:127.0.0.1"
     ports:
       - "54321:54321"
     environment:
