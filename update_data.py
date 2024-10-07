@@ -102,11 +102,21 @@ def mark_email_as_sent_today():
 # This function must run within the app context to interact with the database
 def get_expiring_domains_and_ssl():
     with app.app_context():  # Ensure Flask app context is available
+        # Get the current UTC time and the threshold (30 days from now)
         now_utc = datetime.datetime.utcnow().replace(tzinfo=pytz.UTC)
         thirty_days_from_now = now_utc + datetime.timedelta(days=30)
 
-        expiring_domains = Domain.query.filter(Domain.whois_expiry.isnot(None), Domain.whois_expiry <= thirty_days_from_now).all()
-        expiring_ssl = Subdomain.query.filter(Subdomain.expiry_date.isnot(None), Subdomain.expiry_date <= thirty_days_from_now).all()
+        # Fetch expiring domains (assuming WHOIS expiry is in UTC but stored as naive)
+        expiring_domains = Domain.query.filter(
+            Domain.whois_expiry.isnot(None),
+            Domain.whois_expiry <= thirty_days_from_now
+        ).all()
+
+        # Fetch expiring SSL certificates (assuming SSL expiry is in UTC but stored as naive)
+        expiring_ssl = Subdomain.query.filter(
+            Subdomain.expiry_date.isnot(None),
+            Subdomain.expiry_date <= thirty_days_from_now
+        ).all()
 
         return expiring_domains, expiring_ssl
 
