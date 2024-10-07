@@ -1,6 +1,6 @@
 services:
   backend:
-    image: harbor.bci-devops.com:8443/cert-monitor/cert-monitor:latest
+    image: cert-monitor/cert-monitor:latest
     container_name: cert-monitor
     ports:
       - "54321:54321"

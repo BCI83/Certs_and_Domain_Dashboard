@@ -1,6 +1,6 @@
 FROM python:3.10-slim
 
-RUN apt-get update && apt-get install -y curl iputils-ping dnsutils whois
+RUN apt-get update && apt-get install -y curl iputils-ping dnsutils whois mailutils
 
 WORKDIR /cert-monitor
 
