@@ -123,7 +123,7 @@ def send_expiry_report_email():
 
         html_content = build_html_email(expiring_domains, expiring_ssl)
 
-        email_body_file = "/cert-monitor/expiry_report.html"
+        email_body_file = "/cert-monitor/templates/expiry_report.html"
         with open(email_body_file, 'w') as f:
             f.write(html_content)
 
