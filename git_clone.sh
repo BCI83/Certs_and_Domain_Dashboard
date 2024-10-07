@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Move me to /
-# And use me to do a fresh install from Git
+# Move this to /
+# And use it to do a fresh install from Git
 
 cd /cert-monitor
 docker compose down -v
