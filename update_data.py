@@ -137,6 +137,10 @@ def build_email_subject(expiring_domains, expiring_ssl):
 # Main loop
 if __name__ == "__main__":
     while not shutdown_flag:
+        # Sleep for the interval, checking for SIGTERM
+        for _ in range(60 * UPDATE_INTERVAL):
+            if shutdown_flag:
+                break
         with app.app_context():  # Ensure Flask app context is available
             update_expiry_data()
 
@@ -144,8 +148,3 @@ if __name__ == "__main__":
         if not has_email_been_sent_today():
             send_expiry_report_email()
             mark_email_as_sent_today()
-
-        # Sleep for the interval, checking for SIGTERM
-        for _ in range(60 * UPDATE_INTERVAL):
-            if shutdown_flag:
-                break
