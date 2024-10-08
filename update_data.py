@@ -103,7 +103,7 @@ def build_html_email(expiring_domains, expiring_ssl):
         html_content += "</table>"
     else:
         html_content += "<p>No domains expiring soon.</p>"
-
+    <br><br>
     # Add SSL expiries
     html_content += "<h3>Expiring SSL Certs:</h3>"
     if expiring_ssl:
