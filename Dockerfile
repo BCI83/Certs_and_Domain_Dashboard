@@ -2,6 +2,12 @@ FROM python:3.10-slim
 
 RUN apt-get update && apt-get install -y curl iputils-ping dnsutils whois mailutils
 
+# Configure Postfix to send emails without local domain handling
+RUN echo "relayhost = " >> /etc/postfix/main.cf
+
+# Create /etc/mailname file and populate it with certificate.monitor
+RUN echo "certificate.monitor" > /etc/mailname
+
 WORKDIR /cert-monitor
 
 COPY . /cert-monitor
