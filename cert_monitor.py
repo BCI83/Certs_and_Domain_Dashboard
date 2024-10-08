@@ -10,7 +10,8 @@ import socket
 import logging
 import subprocess
 
-logging.basicConfig(level=logging.WARNING)
+#logging.basicConfig(level=logging.WARNING)
+logging.basicConfig(level=logging.INFO)
 
 app = Flask(__name__)
 
