@@ -7,20 +7,16 @@ services:
       - "certificate.monitor:127.0.0.1"
     ports:
       - "54321:54321"
-    environment:
-      - PYTHONUNBUFFERED=1
-      - SQLALCHEMY_DATABASE_URI=postgresql://certmonitoruser:your_password_here@db:5432/certmonitor      
-      - UPDATE_INTERVAL=2  # How old in minutes can cert/domain expiry data be before being renewed
-      - PYTHONPATH=/cert-monitor
+    env_file:
+      - config_vars.env
     restart: always
     volumes:
       - .:/cert-monitor
     command: bash -c "service postfix start && gunicorn -w 25 -b 0.0.0.0:54321 cert_monitor:app & python update_data.py"
-
     depends_on:
       - db
     networks:
-      - cmn
+      - cert_monitor_net
 
   db:
     image: postgres:13
@@ -31,10 +27,10 @@ services:
     volumes:
       - certmonitor_data:/var/lib/postgresql/data
     networks:
-      - cmn
+      - cert_monitor_net
 
 networks:
-  cmn:
+  cert_monitor_net:
     driver: bridge
     driver_opts:
       com.docker.network.driver.mtu: 1460

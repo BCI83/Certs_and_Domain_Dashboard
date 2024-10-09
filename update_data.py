@@ -1,26 +1,17 @@
-import pytz
+import pytz # type: ignore
 import datetime
 from cert_monitor import get_certificate_expiry, get_whois_expiry, db, Domain, Subdomain, app
 import os
 import subprocess
 import time
-import signal
 import logging
 
 LAST_EMAIL_SENT_FILE = "/cert-monitor/last_email_sent"
-UPDATE_INTERVAL = 60  # Default: run every 60 minutes
-shutdown_flag = False
+LOOP_PAUSE = int(os.getenv('LOOP_PAUSE', 60)) # Minutes
+MAX_DATA_AGE = int(os.getenv('MAX_DATA_AGE', 60)) # Minutes
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO)
-
-def signal_handler(signum, frame):
-    global shutdown_flag
-    shutdown_flag = True
-    logging.info("Received shutdown signal, exiting...")
-
-# Register signal handler for SIGTERM
-signal.signal(signal.SIGTERM, signal_handler)
 
 def has_email_been_sent_today():
     if os.path.exists(LAST_EMAIL_SENT_FILE):
@@ -88,8 +79,7 @@ def build_html_email(expiring_domains, expiring_ssl):
             .red { background-color: red; }
         </style>
     </head>
-    <body>
-        <h2>Expiry Report</h2>
+    <body>    
     """
 
     # Add domain expiries
@@ -102,19 +92,19 @@ def build_html_email(expiring_domains, expiring_ssl):
             html_content += f"<tr class='{row_class}'><td>{domain.domain_name}</td><td>{domain.whois_expiry}</td></tr>"
         html_content += "</table>"
     else:
-        html_content += "<p>No domains expiring soon.</p>"
+        html_content += "<p>N/A</p>"
 
     # Add SSL expiries
     html_content += "<br><br><h3>Expiring SSL Certs:</h3>"
     if expiring_ssl:
-        html_content += "<table><tr><th>Site</th><th>SSL Expiry</th></tr>"
+        html_content += "<table><tr><th>Site</th><th>SSL Expiry (YYYY-MM-DD-UTC)</th></tr>"
         for subdomain in expiring_ssl:
             days_to_expiry = (subdomain.expiry_date - datetime.datetime.now(pytz.UTC)).days  # Use aware datetime
             row_class = "yellow" if days_to_expiry > 7 else ("orange" if days_to_expiry > 0 else "red")
             html_content += f"<tr class='{row_class}'><td>{subdomain.subdomain_name}</td><td>{subdomain.expiry_date}</td></tr>"
         html_content += "</table>"
     else:
-        html_content += "<p>No SSL certificates expiring soon.</p>"
+        html_content += "<p>N/A</p>"
 
     html_content += "</body></html>"
     return html_content
@@ -134,7 +124,7 @@ def update_expiry_data():
         logging.info("Starting expiry data update.")
         now_utc = datetime.datetime.now(pytz.UTC)  # Current UTC time (aware)
         logging.info(f"Current UTC time: {now_utc}")
-        update_threshold = now_utc - datetime.timedelta(minutes=UPDATE_INTERVAL)
+        update_threshold = now_utc - datetime.timedelta(minutes=MAX_DATA_AGE)
         expiring_domains = []
         expiring_ssl = []
 
@@ -189,13 +179,11 @@ def update_expiry_data():
 
 
 def main():
-    while not shutdown_flag:
+    while True:
         update_expiry_data()
 
         # Sleep in small increments to handle SIGTERM quickly
-        for _ in range(60 * UPDATE_INTERVAL):
-            if shutdown_flag:
-                break
+        for _ in range(60 * LOOP_PAUSE):
             time.sleep(1)
 
 if __name__ == "__main__":
