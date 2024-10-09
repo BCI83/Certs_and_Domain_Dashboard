@@ -7,11 +7,15 @@ import time
 import logging
 
 LAST_EMAIL_SENT_FILE = "/cert-monitor/last_email_sent"
-LOOP_PAUSE = int(os.getenv('LOOP_PAUSE', 60)) # Minutes
+LOOP_PAUSE = int(os.getenv('LOOP_PAUSE', 1)) # Minutes
 MAX_DATA_AGE = int(os.getenv('MAX_DATA_AGE', 60)) # Minutes
+EMAIL_ADD = str(os.getenv('EMAIL_ADD'))
 
-# Initialize logging
-logging.basicConfig(level=logging.INFO)
+# Get the logging level from the environment variable (default to INFO if not set)
+log_level = os.getenv('LOG_LEVEL', 'INFO').upper()
+
+# Configure the logging level based on the environment variable
+logging.basicConfig(level=getattr(logging, log_level, logging.INFO))
 
 def has_email_been_sent_today():
     if os.path.exists(LAST_EMAIL_SENT_FILE):
@@ -169,7 +173,7 @@ def update_expiry_data():
                 html_email_content = build_html_email(expiring_domains, expiring_ssl)
                 email_subject = build_email_subject(expiring_domains, expiring_ssl)
                 logging.info(f"Email subject: {email_subject}")
-                send_email("brian.cox@avispl.com", email_subject, html_email_content)
+                send_email(EMAIL_ADD, email_subject, html_email_content)
                 mark_email_as_sent_today()
             else:
                 logging.info("Email has already been sent today, skipping email.")

@@ -5,18 +5,23 @@ from datetime import timedelta
 import pytz # type: ignore
 import ssl
 import re
+import os
 import OpenSSL # type: ignore
 import socket
 import logging
 import subprocess
 
-#logging.basicConfig(level=logging.WARNING)
-logging.basicConfig(level=logging.INFO)
+# Get the logging level from the environment variable (default to INFO if not set)
+log_level = os.getenv('LOG_LEVEL', 'INFO').upper()
+# Configure the logging level based on the environment variable
+logging.basicConfig(level=getattr(logging, log_level, logging.INFO))
+
+SQLALCHEMY_DATABASE_URI = str(os.getenv('SQLALCHEMY_DATABASE_URI'))
 
 app = Flask(__name__)
 
 # Configure SQLAlchemy for PostgreSQL
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://certmonitoruser:your_password_here@db:5432/certmonitor'
+app.config['SQLALCHEMY_DATABASE_URI'] = SQLALCHEMY_DATABASE_URI
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
@@ -25,7 +30,7 @@ class Domain(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     domain_name = db.Column(db.String(255), unique=True, nullable=False)
     whois_expiry = db.Column(db.DateTime, nullable=True)
-    last_update = db.Column(db.DateTime, nullable=True)  # New field for last update
+    last_update = db.Column(db.DateTime, nullable=True)
 
 class Subdomain(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -34,8 +39,8 @@ class Subdomain(db.Model):
     verification_status = db.Column(db.String(10), nullable=True)
     domain_id = db.Column(db.Integer, db.ForeignKey('domain.id'), nullable=False)
     domain = db.relationship('Domain', backref=db.backref('subdomains', lazy=True))
-    notes = db.Column(db.Text, nullable=True)  # New field for notes
-    last_update = db.Column(db.DateTime, nullable=True)  # New field for last update
+    notes = db.Column(db.Text, nullable=True)
+    last_update = db.Column(db.DateTime, nullable=True)
 
 # Ensure that the tables are created at startup
 def create_tables():
