@@ -178,3 +178,21 @@ a:hover {
     cursor: pointer;
     margin-left: 10px;
 }
+/* Styling for the color key */
+.color-key {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        background-color: #2b2b2b;
+        padding: 5px;
+        border-radius: 10px;
+        color: white;
+}
+.color-key span {
+        display: block;
+        margin-bottom: 5px;
+}
+.color-key .green { color: green; }
+.color-key .yellow { color: yellow; }
+.color-key .orange { color: orange; }
+.color-key .red { color: red; }

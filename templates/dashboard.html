@@ -7,7 +7,13 @@
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
-
+    <!-- Color Key in the top left -->
+    <div class="color-key">
+        <span class="green">Green = 30+ days</span>
+        <span class="yellow">Yellow = 7-30 days</span>
+        <span class="orange">Orange = 0-7 days</span>
+        <span class="red">Red = Expired</span>
+    </div>
     <div class="text-center">
         <h1>Domain and Certificate Expiry Dashboard</h1>
     </div>
@@ -39,7 +45,7 @@
                     <!-- Subdomain List (starting from site_list[1:]) -->
                     <ul>
                         {% for site in site_list[1:] %}
-                            {% set color = 'green' if site['expiry'] and site['expiry'] > now + timedelta(days=30) else 'orange' if site['expiry'] and site['expiry'] > now + timedelta(days=7) else 'red' %}
+                            {% set color = 'green' if site['expiry'] and site['expiry'] > now + timedelta(days=30) else 'yellow' if site['expiry'] and site['expiry'] > now + timedelta(days=7) else 'orange' if site['expiry'] and site['expiry'] > now else 'red' %}
                             <li style="color: {{ color }};">
                                 <button class="remove-button" onclick="confirmDelete('{{ site['domain'] }}')" title="Delete">🗑️</button>
 
