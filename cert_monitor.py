@@ -1,3 +1,4 @@
+from flask_login import LoginManager, UserMixin, login_required, login_user, logout_user, current_user
 from flask import Flask, render_template, redirect, url_for, request
 from flask_sqlalchemy import SQLAlchemy # type: ignore
 import datetime
@@ -18,7 +19,33 @@ logging.basicConfig(level=getattr(logging, log_level, logging.INFO))
 
 SQLALCHEMY_DATABASE_URI = str(os.getenv('SQLALCHEMY_DATABASE_URI'))
 
+ADMIN_USERNAME = "admin"
+ADMIN_PASSWORD = "P@$$w0rd"
+
 app = Flask(__name__)
+
+app.secret_key = os.getenv('SECRET_KEY')
+
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+
+class AdminUser(UserMixin):
+    def __init__(self, id):
+        self.id = id
+
+    # Flask-Login requires is_active, is_authenticated, is_anonymous attributes.
+    @property
+    def is_active(self):
+        return True
+
+    @property
+    def is_authenticated(self):
+        return True
+
+    @property
+    def is_anonymous(self):
+        return False
 
 # Configure SQLAlchemy for PostgreSQL
 app.config['SQLALCHEMY_DATABASE_URI'] = SQLALCHEMY_DATABASE_URI
@@ -183,14 +210,39 @@ def load_sites():
 
     return sites
 
-
 @app.route('/')
 def dashboard():
     sites = load_sites()  # Load sites from the database
     now_aware = datetime.datetime.now(pytz.utc)
     return render_template('dashboard.html', sites=sites, timedelta=timedelta, now=now_aware)
 
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+            # Use the AdminUser class instead of a dictionary
+            user = AdminUser(id=1)
+            login_user(user)
+            return redirect(url_for('dashboard'))
+    return render_template('login.html')
+
+@login_manager.user_loader
+def load_user(user_id):
+    # Return the admin user since there's only one user
+    if user_id == "1":
+        return AdminUser(id=1)
+    return None
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for('login'))
+
 @app.route('/save_notes/<int:subdomain_id>', methods=['POST'])
+@login_required
 def save_notes(subdomain_id):
     # Fetch the subdomain using the provided ID
     subdomain = Subdomain.query.get_or_404(subdomain_id)
@@ -209,6 +261,7 @@ def save_notes(subdomain_id):
 
 
 @app.route('/add_site', methods=['POST'])
+@login_required
 def add_site_route():
     domain = request.form['domain'].strip()
 
@@ -262,6 +315,7 @@ def add_site_route():
 
 
 @app.route('/subdomain/<int:subdomain_id>', methods=['GET', 'POST'])
+@login_required
 def subdomain_detail(subdomain_id):
     subdomain = Subdomain.query.get_or_404(subdomain_id)
     return render_template('subdomain_detail.html', subdomain=subdomain)
@@ -269,6 +323,7 @@ def subdomain_detail(subdomain_id):
 
 
 @app.route('/delete_site/<domain>', methods=['POST'])
+@login_required
 def delete_site(domain):
     try:
         # Find the subdomain in the database
@@ -301,6 +356,7 @@ def delete_site(domain):
         return str(e), 500  # Server error
 
 @app.route('/site/<domain>')
+@login_required
 def site_detail(domain):
     # Fetch and display information about the given domain/subdomain
     site = Domain.query.filter_by(domain_name=domain).first() or Subdomain.query.filter_by(subdomain_name=domain).first()

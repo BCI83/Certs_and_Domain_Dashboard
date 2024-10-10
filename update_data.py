@@ -50,7 +50,7 @@ def build_email_subject(expiring_domains, expiring_ssl):
             urgency_level = "WARNING"
         if any((sub.expiry_date - datetime.datetime.utcnow().replace(tzinfo=pytz.UTC)).days <= 0 for sub in expiring_ssl):
             urgency_level = "CRITICAL"
-    
+
     subject = f"[{urgency_level}] "
     if expiring_domains and expiring_ssl:
         domain_text = f"{len(expiring_domains)} Expiring Domain" if len(expiring_domains) == 1 else f"{len(expiring_domains)} Expiring Domains"
@@ -86,7 +86,7 @@ def build_html_email(expiring_domains, expiring_ssl):
             .red { background-color: red; }
         </style>
     </head>
-    <body>    
+    <body>
     """
 
     # Add domain expiries
