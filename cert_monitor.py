@@ -1,5 +1,5 @@
-from flask_login import LoginManager, UserMixin, login_required, login_user, logout_user, current_user
-from flask import Flask, render_template, redirect, url_for, request
+from flask_login import LoginManager, UserMixin, login_required, login_user, logout_user, current_user # type: ignore
+from flask import Flask, render_template, redirect, url_for, request, jsonify
 from flask_sqlalchemy import SQLAlchemy # type: ignore
 import datetime
 from datetime import timedelta
@@ -219,7 +219,7 @@ def dashboard():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        username = request.form['username']
+        username = 'admin'
         password = request.form['password']
         if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
             # Use the AdminUser class instead of a dictionary
@@ -236,10 +236,16 @@ def load_user(user_id):
     return None
 
 @app.route('/logout')
-@login_required
 def logout():
     logout_user()
-    return redirect(url_for('login'))
+    return redirect(url_for('dashboard'))
+
+@app.route('/check_login')
+def check_login():
+    logging.info(f'Login check: {current_user.is_authenticated}')  # Log the login check status
+    if current_user.is_authenticated:
+        return jsonify({'logged_in': True})
+    return jsonify({'logged_in': False})
 
 @app.route('/save_notes/<int:subdomain_id>', methods=['POST'])
 @login_required
@@ -323,7 +329,7 @@ def subdomain_detail(subdomain_id):
 
 
 @app.route('/delete_site/<domain>', methods=['POST'])
-@login_required
+@login_required  # This ensures the user is logged in before deleting
 def delete_site(domain):
     try:
         # Find the subdomain in the database
@@ -346,7 +352,7 @@ def delete_site(domain):
                     db.session.commit()
                     logging.info(f"Removed domain from DB: {main_domain.domain_name}")
 
-            return '', 204  # No content (successful deletion)
+            return redirect(url_for('dashboard'))  # Redirect to dashboard on success
         else:
             logging.error(f"Subdomain not found in DB: {domain}")
             return 'Subdomain not found', 404  # Not found

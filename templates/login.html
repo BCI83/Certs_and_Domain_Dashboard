@@ -1,11 +1,31 @@
 <!doctype html>
-<html>
-<head><title>Login</title></head>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subdomain Details</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='styles.css') }}">
+</head>
 <body>
-  <form method="POST">
-    Username: <input type="text" name="username"><br>
-    Password: <input type="password" name="password"><br>
-    <input type="submit" value="Login">
-  </form>
+    <div class="navbar">
+        {% if 'logged_in' in session %}
+            <a href="/logout" class="logout-button">Logout</a>
+        {% endif %}
+    </div>
+
+    <div class="text-center">
+        <h1>Certificate update procedure/notes for:</h1>
+        <h2>{{ subdomain.subdomain_name }}</h2>
+    </div>
+
+    <!-- Form to update procedure -->
+        <form method="POST" action="{{ url_for('save_notes', subdomain_id=subdomain.id) }}" class="notes-form">
+                <textarea name="notes" rows="10" placeholder="Enter instructions here">{{ subdomain.notes }}</textarea>
+                <div>
+                        <input type="submit" value="Save">
+                        <a href="{{ url_for('dashboard') }}">Cancel</a>
+                </div>
+        </form>
+
 </body>
 </html>

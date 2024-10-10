@@ -7,6 +7,12 @@
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
+    <div class="navbar">
+        {% if current_user.is_authenticated %}
+            <a href="/logout" class="logout-button">Logout</a>
+        {% endif %}
+    </div>
+
     <!-- Color Key in the top left -->
     <div class="color-key">
         <span class="green">Green = 30+ days</span>
@@ -42,13 +48,12 @@
                         {% endif %}
                     </div>
 
-                    <!-- Subdomain List (starting from site_list[1:]) -->
+                    <!-- Subdomain List -->
                     <ul>
                         {% for site in site_list[1:] %}
                             {% set color = 'green' if site['expiry'] and site['expiry'] > now + timedelta(days=30) else 'yellow' if site['expiry'] and site['expiry'] > now + timedelta(days=7) else 'orange' if site['expiry'] and site['expiry'] > now else 'red' %}
                             <li style="color: {{ color }};">
                                 <button class="remove-button" onclick="confirmDelete('{{ site['domain'] }}')" title="Delete">🗑️</button>
-
                                 <!-- Display expiry date or Unknown if not available -->
                                 {% if site['expiry'] %}
                                     <span title="{{ site['expiry'].strftime('%H:%M:%S UTC') }}">
@@ -59,15 +64,14 @@
                                     <span style="color: red;" title="No certificate info">✘</span>
                                 {% endif %}
 
-                                <!-- Verification status for each subdomain -->
+                                <!-- Verification status -->
                                 {% if site['verification_status'] == 'green' %}
                                     <span style="color: green" title="Certificate chain verified">✔</span>
                                 {% elif site['expiry'] and site['verification_status'] == 'red' %}
-                                    <!-- Show orange tick if there's a certificate but it's invalid -->
                                     <span style="color: orange" title="Unable to verify certificate (likely missing chain)">✔</span>
                                 {% endif %}
 
-                                <!-- Subdomain name with link to details -->
+                                <!-- Subdomain link -->
                                 <a href="{{ url_for('subdomain_detail', subdomain_id=site['id']) }}" style="color: lightsteelblue;">
                                     {{ site['domain'] }}
                                 </a>
@@ -86,9 +90,7 @@
         <div class="modal-content">
             <span id="modal-text"></span>
             <p>(this action can't be undone)</p>
-            <!-- Yes button calls confirmDeletion() -->
             <button id="confirm-yes" onclick="confirmDeletion()">Yes</button>
-            <!-- Cancel button calls closeModal() -->
             <button id="confirm-cancel" onclick="closeModal()">Cancel</button>
         </div>
     </div>
@@ -96,42 +98,57 @@
     <script>
         let currentSite = '';
 
-        // Function to open the delete confirmation modal
         function confirmDelete(site) {
-            currentSite = site;
-            document.getElementById('modal-text').textContent = `Are you sure you want to remove ${site}?`;
-            document.getElementById('confirmation-modal').style.display = 'flex';
+                // Check if the user is logged in by making an AJAX request
+                fetch('/check_login', {
+                        method: 'GET',
+                        credentials: 'include'
+                }).then(response => response.json())
+                  .then(data => {
+                          if (data.logged_in) {
+                                  // If the user is logged in, show the confirmation modal
+                                  currentSite = site;
+                                  document.getElementById('modal-text').textContent = `Are you sure you want to remove ${site}?`;
+                                  document.getElementById('confirmation-modal').style.display = 'flex';
+                          } else {
+                                  // If the user is not logged in, immediately redirect to the login page
+                                  window.location.href = "/login";
+                          }
+                  }).catch(error => {
+                          console.error('Error checking login status:', error);
+                  });
         }
 
-        // Function to close the modal
         function closeModal() {
             document.getElementById('confirmation-modal').style.display = 'none';
             currentSite = '';
         }
 
-        // Function to confirm deletion and send the POST request to delete the site
         function confirmDeletion() {
-            if (currentSite) {
-                const cleanedSite = currentSite.replace(/^https?:\/\//, '').replace('/', '').trim();
+                if (currentSite) {
+                        const cleanedSite = currentSite.replace(/^https?:\/\//, '').replace('/', '').trim();
 
-                fetch(`/delete_site/${encodeURIComponent(cleanedSite)}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                }).then(response => {
-                    if (response.ok) {
-                        window.location.reload();  // Reload the page to reflect changes
-                    } else {
-                        console.error("Error deleting site:", response.status);
-                    }
-                }).catch(error => {
-                    console.error('Fetch error:', error);
-                });
-            }
-            closeModal();
+                        // Proceed with the deletion attempt directly; if not logged in, Flask will handle the redirect
+                        fetch(`/delete_site/${encodeURIComponent(cleanedSite)}`, {
+                                method: 'POST',
+                                headers: {
+                                        'Content-Type': 'application/json'
+                                }
+                        }).then(response => {
+                                if (response.ok) {
+                                        window.location.reload();  // Reload the page to reflect changes
+                                } else if (response.status === 401 || response.redirected) {
+                                        // If not logged in or redirected, go to login page
+                                        window.location.href = "/login";  // Redirect to login if not authenticated
+                                } else {
+                                        console.error("Error deleting site:", response.status);
+                                }
+                        }).catch(error => {
+                                console.error('Fetch error during deletion:', error);
+                        });
+                }
+                closeModal();  // Close the modal after the attempt
         }
     </script>
-
 </body>
 </html>
