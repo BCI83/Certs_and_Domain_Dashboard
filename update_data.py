@@ -51,13 +51,14 @@ def build_email_subject(expiring_domains, expiring_ssl):
         if any((sub.expiry_date - datetime.datetime.utcnow().replace(tzinfo=pytz.UTC)).days <= 0 for sub in expiring_ssl):
             urgency_level = "CRITICAL"
 
-    subject = f"[{urgency_level}] "
     if expiring_domains and expiring_ssl:
-        subject += "Domain and SSL Expiries"
+        domain_text = f"{len(expiring_domains)} Expiring Domain" if len(expiring_domains) == 1 else f"{len(expiring_domains)} Expiring Domains"
+        ssl_text = f"{len(expiring_ssl)} Expiring SSL Certificate" if len(expiring_ssl) == 1 else f"{len(expiring_ssl)} Expiring SSL Certificates"
+        subject += f"{domain_text} and {ssl_text}"
     elif expiring_domains:
-        subject += "Domain Expiries"
+        subject += f"{len(expiring_domains)} Expiring Domain" if len(expiring_domains) == 1 else f"{len(expiring_domains)} Expiring Domains"
     elif expiring_ssl:
-        subject += "SSL Expiries"
+        subject += f"{len(expiring_ssl)} Expiring SSL Certificate" if len(expiring_ssl) == 1 else f"{len(expiring_ssl)} Expiring SSL Certificates"
 
     return subject
 
