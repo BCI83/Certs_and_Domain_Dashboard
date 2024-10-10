@@ -125,33 +125,30 @@ def get_whois_expiry(domain):
         result = subprocess.run(['whois', domain], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         output = result.stdout
 
-        # Adjust the regex to account for variations in date format (Z, +0000, milliseconds)
-        match = re.search(r'Registrar Registration Expiration Date:\s*(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(Z|\+\d{4}))', output)
+        # Adjust the regex to account for both 'Registrar Registration Expiration Date' and 'Registry Expiry Date'
+        match = re.search(r'(Registrar Registration Expiration Date|Registry Expiry Date):\s*(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z)', output)
 
         if match:
-            expiry_str = match.group(1)
+            expiry_str = match.group(2)
 
             # Parse the datetime string, considering both Z and +0000 timezones and millisecond precision
-            if expiry_str.endswith('Z'):
-                # Handle with milliseconds if present
-                if '.' in expiry_str:
-                    expiry_date = datetime.datetime.strptime(expiry_str, "%Y-%m-%dT%H:%M:%S.%fZ")
-                else:
-                    expiry_date = datetime.datetime.strptime(expiry_str, "%Y-%m-%dT%H:%M:%SZ")
-                expiry_date = expiry_date.replace(tzinfo=datetime.timezone.utc)  # Make it explicitly timezone-aware
+            if '.' in expiry_str:
+                expiry_date = datetime.datetime.strptime(expiry_str, "%Y-%m-%dT%H:%M:%S.%fZ")
             else:
-                # Handle +0000 and similar offsets
-                expiry_date = datetime.datetime.strptime(expiry_str, "%Y-%m-%dT%H:%M:%S%z")
+                expiry_date = datetime.datetime.strptime(expiry_str, "%Y-%m-%dT%H:%M:%SZ")
+
+            expiry_date = expiry_date.replace(tzinfo=datetime.timezone.utc)  # Make it explicitly timezone-aware
 
             logging.debug(f"WHOIS expiry for {domain}: {expiry_date} (type: {type(expiry_date)})")
-            return expiry_date  # Return the timezone-aware datetime object
+            return expiry_date, "green"  # Return the expiry date and a normal status
 
         else:
             logging.error(f"No WHOIS expiry date found for {domain}")
-            return None
+            return None, "error"  # Return None if no expiry date is found
+
     except Exception as e:
         logging.error(f"Error fetching WHOIS data for {domain}: {e}")
-        return None
+        return None, "error"  # Return None in case of an error
 
 def load_sites():
     sites = {}
@@ -298,7 +295,12 @@ def add_site_route():
         new_domain = existing_domain
     else:
         # Perform WHOIS lookup for the main domain lease expiry
-        whois_expiry = get_whois_expiry(main_domain)
+        whois_expiry, status = get_whois_expiry(main_domain)
+
+        # If WHOIS expiry is None, handle it gracefully
+        if whois_expiry is None:
+            logging.error(f"WHOIS expiry not found for {main_domain}, not adding domain.")
+            return f"Failed to retrieve WHOIS data for {main_domain}", 400
 
         # Create new main domain entry with WHOIS expiry data and populate the last_update field
         new_domain = Domain(domain_name=main_domain, whois_expiry=whois_expiry, last_update=datetime.datetime.now(pytz.UTC))
@@ -318,7 +320,6 @@ def add_site_route():
         db.session.commit()
 
     return redirect(url_for('dashboard'))
-
 
 @app.route('/subdomain/<int:subdomain_id>', methods=['GET', 'POST'])
 @login_required

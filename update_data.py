@@ -183,6 +183,8 @@ def update_expiry_data():
         else:
             logging.info("No expiring items found.")
 
+
+
 def main():
     while True:
         update_expiry_data()
