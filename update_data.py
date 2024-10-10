@@ -88,7 +88,7 @@ def build_html_email(expiring_domains, expiring_ssl):
     """
 
     # Add domain expiries
-    html_content += "<h3>Domains:</h3>"
+    html_content += "<h3>Expiring Domains:</h3>"
     if expiring_domains:
         html_content += "<table><tr><th style='width: 50%;'>Domain</th><th style='width: 50%;'>WHOIS Expiry</th></tr>"
         for domain in expiring_domains:
@@ -100,7 +100,7 @@ def build_html_email(expiring_domains, expiring_ssl):
         html_content += "<p>N/A</p>"
 
     # Add SSL expiries
-    html_content += "<br><br><h3>SSL Certs:</h3>"
+    html_content += "<br><br><h3>Expiring SSL Certs:</h3>"
     if expiring_ssl:
         html_content += "<table><tr><th style='width: 50%;'>Site</th><th style='width: 50%;'>SSL Expiry (YYYY-MM-DD-UTC)</th></tr>"
         for subdomain in expiring_ssl:
