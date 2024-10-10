@@ -84,6 +84,29 @@ def build_html_email(expiring_domains, expiring_ssl):
             .yellow { background-color: yellow; }
             .orange { background-color: orange; }
             .red { background-color: red; }
+            .color-key-table {
+                margin-top: 20px;
+                width: 100%;
+            }
+            .color-key-table td {
+                text-align: center;
+                padding: 3px;
+                margin: 0; /* Remove any margins around the text */
+                font-weight: bold;
+                width: 33%;
+                height: 30px; /* Set a specific height */
+                line-height: 30px; /* Ensure text aligns vertically within the cell */
+                background-color: inherit; /* Make sure the background is inherited or set directly */
+            }
+            .color-key-table .red {
+                background-color: red;
+            }
+            .color-key-table .orange {
+                background-color: orange;
+            }
+            .color-key-table .yellow {
+                background-color: yellow;
+            }
         </style>
     </head>
     <body>
@@ -113,9 +136,21 @@ def build_html_email(expiring_domains, expiring_ssl):
     else:
         html_content += "<p>N/A</p>"
 
-    html_content += "</body></html>"
+    # Add color key at the bottom
+    html_content += """
+    <br><br>
+    <h3>Color Key:</h3>
+    <table class="color-key-table">
+        <tr>
+            <td class="red">Expired Already</td>
+            <td class="orange">Expires 0-7 days</td>
+            <td class="yellow">Expires in 7-30 days</td>
+        </tr>
+    </table>
+    </body></html>
+    """
+    
     return html_content
-
 
 def send_email(to_address, subject, body_content, from_address="Symphony Certificate and Domain Monitor <admin@certificate.monitor>"):
     command = f'echo "{body_content}" | mail -s "{subject}" -a "From: {from_address}" -a "Content-Type: text/html" {to_address}'
