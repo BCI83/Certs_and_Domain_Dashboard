@@ -149,7 +149,7 @@ def build_html_email(expiring_domains, expiring_ssl):
     </table>
     </body></html>
     """
-    
+
     return html_content
 
 def send_email(to_address, subject, body_content, from_address="Symphony Certificate and Domain Monitor <admin@certificate.monitor>"):
