@@ -5,14 +5,18 @@ services:
     hostname: certificate
     extra_hosts:
       - "certificate.monitor:127.0.0.1"
+    dns:
+      - 172.31.11.188
+      - 8.8.4.4
     ports:
-      - "54321:54321"
+      - "443:443"
     env_file:
       - config_vars.env
     restart: always
     volumes:
       - .:/cert-monitor
-    command: bash -c "service postfix start && gunicorn -w 25 -b 0.0.0.0:54321 cert_monitor:app & python update_data.py"
+    command: bash -c "service postfix start && gunicorn --certfile=./certs/expiry.vnocsymphony.com.crt --keyfile=./certs/expiry.vnocsymphony.com.key -w 25 -b 0.0.0.0:443 cert_monitor:app & python update_data.py"
+
     depends_on:
       - db
     networks:
