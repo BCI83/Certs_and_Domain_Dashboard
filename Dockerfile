@@ -22,4 +22,4 @@ RUN pip --default-timeout=100 install --no-cache-dir -r /cert-monitor/requiremen
 EXPOSE 54321
 
 # Start Postfix and the Flask app when the container starts
-CMD service postfix start && gunicorn -w 25 -b 0.0.0.0:54321 cert_monitor:app
+CMD service postfix start && gunicorn -w 5 -b 0.0.0.0:54321 cert_monitor:app

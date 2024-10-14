@@ -15,7 +15,7 @@ services:
     restart: always
     volumes:
       - .:/cert-monitor
-    command: bash -c "service postfix start && gunicorn --certfile=./certs/expiry.vnocsymphony.com.crt --keyfile=./certs/expiry.vnocsymphony.com.key -w 25 -b 0.0.0.0:443 cert_monitor:app & python update_data.py"
+    command: bash -c "service postfix start && gunicorn --certfile=./certs/expiry.vnocsymphony.com.crt --keyfile=./certs/expiry.vnocsymphony.com.key -w 5 -b 0.0.0.0:443 cert_monitor:app & python update_data.py"
 
     depends_on:
       - db
@@ -36,8 +36,8 @@ services:
 networks:
   cert_monitor_net:
     driver: bridge
-    driver_opts:
-      com.docker.network.driver.mtu: 1460
+#    driver_opts:
+#      com.docker.network.driver.mtu: 1460
 
 volumes:
   certmonitor_data:
