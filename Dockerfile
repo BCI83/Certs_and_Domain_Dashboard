@@ -19,7 +19,7 @@ RUN echo "certificate.monitor" > /etc/mailname
 RUN pip --default-timeout=100 install --no-cache-dir -r /cert-monitor/requirements.txt
 
 # Expose the port for your Flask app
-EXPOSE 54321
+EXPOSE 443
 
 # Start Postfix and the Flask app when the container starts
-CMD service postfix start && gunicorn -w 5 -b 0.0.0.0:54321 cert_monitor:app
+CMD service postfix start && gunicorn -w 5 -b 0.0.0.0:443 cert_monitor:app
