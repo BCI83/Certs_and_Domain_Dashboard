@@ -15,7 +15,7 @@ services:
     restart: always
     volumes:
       - .:/cert-monitor
-    command: bash -c "service postfix start && gunicorn --certfile=./certs/expiry.vnocsymphony.com.crt --keyfile=./certs/expiry.vnocsymphony.com.key -w 5 -b 0.0.0.0:443 cert_monitor:app & python update_data.py"
+    command: bash -c "service postfix start && gunicorn --certfile=./ssl_cert/expiry.vnocsymphony.com.crt --keyfile=./ssl_cert/expiry.vnocsymphony.com.key -w 5 -b 0.0.0.0:443 cert_monitor:app & python update_data.py"
 
     depends_on:
       - db
