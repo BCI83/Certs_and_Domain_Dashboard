@@ -36,8 +36,6 @@ services:
 networks:
   cert_monitor_net:
     driver: bridge
-#    driver_opts:
-#      com.docker.network.driver.mtu: 1460
 
 volumes:
   certmonitor_data:
