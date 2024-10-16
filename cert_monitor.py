@@ -11,6 +11,7 @@ import OpenSSL # type: ignore
 import socket
 import logging
 import subprocess
+import requests
 
 # Get the logging level from the environment variable (default to INFO if not set)
 log_level = os.getenv('LOG_LEVEL', 'INFO').upper()
