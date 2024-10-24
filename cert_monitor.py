@@ -87,9 +87,10 @@ def get_certificate_expiry(domain):
         hostname = domain
         port = 443
 
+    # First attempt: verified connection with a timeout of 5 seconds
     try:
         context = ssl.create_default_context()
-        with socket.create_connection((hostname, port), timeout=10) as sock:
+        with socket.create_connection((hostname, port), timeout=5) as sock:  # Shortened timeout to 5 seconds
             with context.wrap_socket(sock, server_hostname=hostname) as ssock:
                 cert = ssock.getpeercert(True)
                 cert_pem = ssl.DER_cert_to_PEM_cert(cert)
@@ -99,11 +100,12 @@ def get_certificate_expiry(domain):
                 logging.debug(f"Certificate expiry for {domain}: {expiry_date}")
                 return expiry_date, 'green'
     except Exception as e:
-        logging.debug(f"Verification failed for {domain}: {e}")
+        logging.debug(f"Verified certificate fetch failed for {domain}: {e}")
 
+    # Second attempt: unverified connection with a timeout of 5 seconds
     try:
         context = ssl._create_unverified_context()
-        with socket.create_connection((hostname, port), timeout=10) as sock:
+        with socket.create_connection((hostname, port), timeout=5) as sock:  # Shortened timeout to 5 seconds
             with context.wrap_socket(sock, server_hostname=hostname) as ssock:
                 cert = ssock.getpeercert(True)
                 cert_pem = ssl.DER_cert_to_PEM_cert(cert)
@@ -113,8 +115,12 @@ def get_certificate_expiry(domain):
                 logging.debug(f"Unverified certificate expiry for {domain}: {expiry_date}")
                 return expiry_date, 'red'
     except Exception as e:
-        logging.debug(f"Error fetching certificate for {domain}: {e}")
-        return None, 'error'
+        logging.debug(f"Unverified certificate fetch failed for {domain}: {e}")
+
+    # If both attempts fail, mark the domain as unreachable
+    logging.debug(f"Site unreachable for {domain}")
+    return None, 'grey'
+
 
 def get_whois_expiry(domain):
     """
@@ -319,9 +325,19 @@ def add_site_route():
         # Perform the certificate expiry check for the subdomain
         expiry_date, verification_status = get_certificate_expiry(domain_without_protocol)
 
+        # If the subdomain is unreachable, handle it gracefully
+        if verification_status == 'grey':
+            logging.info(f"Subdomain {domain_without_protocol} is unreachable.")
+
         # Create the subdomain and populate the last_update field
-        subdomain = Subdomain(subdomain_name=domain_without_protocol, domain_id=new_domain.id, expiry_date=expiry_date,
-                              verification_status=verification_status, last_update=datetime.datetime.now(pytz.UTC))
+        subdomain = Subdomain(
+            subdomain_name=domain_without_protocol,
+            domain_id=new_domain.id,
+            expiry_date=expiry_date,
+            verification_status=verification_status,
+            last_update=datetime.datetime.now(pytz.UTC),
+            notes=''
+        )
         db.session.add(subdomain)
         db.session.commit()
 

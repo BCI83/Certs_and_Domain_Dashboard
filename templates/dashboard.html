@@ -49,35 +49,38 @@
                     </div>
 
                     <!-- Subdomain List -->
-                    <ul>
-                        {% for site in site_list[1:] %}
-                            {% set color = 'green' if site['expiry'] and site['expiry'] > now + timedelta(days=30) else 'yellow' if site['expiry'] and site['expiry'] > now + timedelta(days=7) else 'orange' if site['expiry'] and site['expiry'] > now else 'red' %}
-                            <li style="color: {{ color }};">
-                                <button class="remove-button" onclick="confirmDelete('{{ site['domain'] }}')" title="Delete">🗑️</button>
-                                <!-- Display expiry date or Unknown if not available -->
-                                {% if site['expiry'] %}
-                                    <span title="{{ site['expiry'].strftime('%H:%M:%S UTC') }}">
-                                        {{ site['expiry'].strftime('%d %b %Y') }}
-                                    </span> -
-                                {% else %}
-                                    <span style="color: red;">Unknown</span> -
-                                    <span style="color: red;" title="No certificate info">✘</span>
-                                {% endif %}
+            <ul>
+                {% for site in site_list[1:] %}
+                    {% if site['verification_status'] == 'grey' %}
+                        <li style="color: grey;">
+                            <button class="remove-button" onclick="confirmDelete('{{ site['domain'] }}')" title="Delete">🗑️</button>
+                            <span style="color: grey;">Unreachable</span> -
+                            <span style="color: grey;" title="If this server is in AWS a rule likely needs to be configured for https:// connections from this server's IP/32">✘</span>
+                            <a href="{{ url_for('subdomain_detail', subdomain_id=site['id']) }}" style="color: lightsteelblue;">
+                                {{ site['domain'] }}
+                            </a>
+                        </li>
+                    {% else %}
+                        <!-- Existing logic for reachable subdomains -->
+                        {% set color = 'green' if site['expiry'] and site['expiry'] > now + timedelta(days=30) else 'yellow' if site['expiry'] and site['expiry'] > now + timedelta(days=7) else 'orange' if site['expiry'] and site['expiry'] > now else 'red' %}
+                        <li style="color: {{ color }};">
+                            <button class="remove-button" onclick="confirmDelete('{{ site['domain'] }}')" title="Delete">🗑️</button>
+                            {% if site['expiry'] %}
+                                <span title="{{ site['expiry'].strftime('%H:%M:%S UTC') }}">
+                                    {{ site['expiry'].strftime('%d %b %Y') }}
+                                </span> -
+                            {% else %}
+                                <span style="color: red;">Unknown</span> -
+                                <span style="color: red;" title="No certificate info">✘</span>
+                            {% endif %}
+                            <a href="{{ url_for('subdomain_detail', subdomain_id=site['id']) }}" style="color: lightsteelblue;">
+                                {{ site['domain'] }}
+                            </a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+            </ul>
 
-                                <!-- Verification status -->
-                                {% if site['verification_status'] == 'green' %}
-                                    <span style="color: green" title="Certificate chain verified">✔</span>
-                                {% elif site['expiry'] and site['verification_status'] == 'red' %}
-                                    <span style="color: orange" title="Unable to verify certificate (likely missing chain)">✔</span>
-                                {% endif %}
-
-                                <!-- Subdomain link -->
-                                <a href="{{ url_for('subdomain_detail', subdomain_id=site['id']) }}" style="color: lightsteelblue;">
-                                    {{ site['domain'] }}
-                                </a>
-                            </li>
-                        {% endfor %}
-                    </ul>
                 </div>
             {% endfor %}
         {% else %}
