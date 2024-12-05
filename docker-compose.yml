@@ -24,6 +24,8 @@ services:
   db:
     image: postgres:13
     container_name: cert-monitor-db
+    ports:
+      - "5432:5432"
     environment:
       POSTGRES_USER: certmonitoruser
       POSTGRES_PASSWORD: Passw0rd
