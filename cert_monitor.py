@@ -214,10 +214,10 @@ def load_sites():
 
     return sites
 
-@app.before_request
-def before_request():
-    if not request.is_secure:
-        return redirect(request.url.replace("http://", "https://"))
+#@app.before_request
+#def before_request():
+#    if not request.is_secure:
+#        return redirect(request.url.replace("http://", "https://"))
 
 @app.route('/')
 def dashboard():
