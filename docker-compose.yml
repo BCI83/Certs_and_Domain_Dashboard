@@ -9,14 +9,13 @@ services:
       - 172.31.11.188
       - 8.8.4.4
     ports:
-      - "443:443"
+      - "8001:80"
     env_file:
       - config_vars.env
     restart: always
     volumes:
       - .:/cert-monitor
-    command: bash -c "service postfix start && gunicorn --certfile=./ssl_cert/expiry.vnocsymphony.com.crt --keyfile=./ssl_cert/expiry.vnocsymphony.com.key -w 5 -b 0.0.0.0:443 cert_monitor:app & python update_data.py"
-
+    command: bash -c "service postfix start && gunicorn -w 5 -b 0.0.0.0:80 cert_monitor:app & python update_data.py"
     depends_on:
       - db
     networks:
@@ -36,6 +35,9 @@ services:
 networks:
   cert_monitor_net:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 10.0.0.16/28
 
 volumes:
   certmonitor_data:
