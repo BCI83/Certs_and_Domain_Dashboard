@@ -151,10 +151,23 @@ def build_html_email(expiring_domains, expiring_ssl):
             .color-key-table .yellow {
                 background-color: yellow;
             }
+            .centered-link {
+                text-align: center;
+                margin: 20px 0;
+            }
+            .centered-link a {
+                text-decoration: none;
+                font-size: 1.2em;
+                color: #0066cc;
+            }
         </style>
     </head>
     <body>
+        <div class="centered-link">
+            <a href="https://expiry.vnocsymphony.com" target="_blank">https://expiry.vnocsymphony.com</a>
+        </div>
     """
+
 
     # Add domain expiries
     html_content += "<h3>Expiring Domains:</h3>"
