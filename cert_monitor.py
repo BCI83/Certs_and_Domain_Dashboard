@@ -109,22 +109,22 @@ def export_db():
 def import_db():
     try:
         # Get the uploaded file
-        uploaded_file = request.files.get('db_file')
-        if not uploaded_file or not uploaded_file.filename.endswith('.sql'):
+        file = request.files.get('file')
+
+        # Ensure a file is selected
+        if not file:
+            return "No file selected.", 400
+
+        # Validate the file extension
+        if not file.filename.lower().endswith('.sql'):
             return "Invalid file format. Please upload a .sql file.", 400
 
         # Save the uploaded file temporarily
-        file_path = "/tmp/uploaded_database.sql"
-        uploaded_file.save(file_path)
+        temp_file_path = f"/tmp/{file.filename}"
+        file.save(temp_file_path)
 
-        # Validate the SQL file for required tables and columns
-        validation_result = validate_sql_file(file_path)
-        if not validation_result['valid']:
-            logging.error(f"Invalid database structure: {validation_result['error']}")
-            return f"Invalid database structure: {validation_result['error']}", 400
-
-        # Overwrite the database using `psql`
-        import_command = f"psql --dbname=postgresql://your_db_user:your_db_password@your_db_host/your_db_name < {file_path}"
+        # Use `psql` to import the database
+        import_command = f"psql --username=certmonitoruser --host=db --port=5432 --dbname=certmonitor -f {temp_file_path}"
         result = os.system(import_command)
 
         # Check if the import command succeeded
@@ -132,10 +132,17 @@ def import_db():
             logging.error("Database import failed.")
             return "Failed to import database.", 500
 
-        return redirect(url_for('dashboard'))
+        # Return success message
+        return "Database imported successfully.", 200
+
     except Exception as e:
         logging.error(f"Error during database import: {e}")
         return "Failed to import database.", 500
+
+    finally:
+        # Ensure the temporary file is deleted
+        if os.path.exists(temp_file_path):
+            os.remove(temp_file_path)
 
 def validate_sql_file(file_path):
     """
