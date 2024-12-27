@@ -107,6 +107,7 @@ def export_db():
 @app.route('/import_db', methods=['POST'])
 @login_required
 def import_db():
+    temp_file_path = None  # Initialize the variable
     try:
         # Get the uploaded file
         file = request.files.get('file')
@@ -141,8 +142,9 @@ def import_db():
 
     finally:
         # Ensure the temporary file is deleted
-        if os.path.exists(temp_file_path):
+        if temp_file_path and os.path.exists(temp_file_path):
             os.remove(temp_file_path)
+
 
 def validate_sql_file(file_path):
     """
