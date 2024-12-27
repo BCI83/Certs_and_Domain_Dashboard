@@ -136,10 +136,12 @@ def import_db():
             logging.error("Database import failed.")
             return "Failed to import database.", 500
 
-        return "Database imported successfully.", 200
+        # Redirect to the dashboard on success
+        return redirect(url_for('dashboard'))
     except Exception as e:
         logging.error(f"Error during database import: {e}")
         return "Failed to import database.", 500
+
 
 def validate_sql_file(file_path):
     """
