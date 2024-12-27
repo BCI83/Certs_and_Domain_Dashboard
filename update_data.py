@@ -5,6 +5,9 @@ import os
 import subprocess
 import time
 import logging
+from logging.handlers import RotatingFileHandler
+from logging.handlers import BaseRotatingHandler
+
 
 LAST_EMAIL_SENT_FILE = "/cert-monitor/last_email_sent"
 LOOP_PAUSE = int(os.getenv('LOOP_PAUSE', 1)) # Minutes
@@ -13,9 +16,50 @@ EMAIL_ADD = str(os.getenv('EMAIL_ADD'))
 
 # Get the logging level from the environment variable (default to INFO if not set)
 log_level = os.getenv('LOG_LEVEL', 'INFO').upper()
+# Validate and set the log level
+numeric_log_level = getattr(logging, log_level, logging.INFO)
 
-# Configure the logging level based on the environment variable
-logging.basicConfig(level=getattr(logging, log_level, logging.INFO))
+# Configure logging with a rotating file handler
+log_file_path = '/cert-monitor/update_data.log'
+# Create a RotatingFileHandler
+handler = RotatingFileHandler(
+    log_file_path,
+    maxBytes=10 * 1024 * 1024,  # 10 MB
+    backupCount=5  # Keep 5 backup files
+)
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+
+# Add the handler to the root logger
+logging.getLogger().addHandler(handler)
+logging.getLogger().setLevel(numeric_log_level)
+
+class LineCountRotatingFileHandler(BaseRotatingHandler):
+    def __init__(self, filename, max_lines=20000, backup_count=5, encoding=None, delay=False):
+        self.max_lines = max_lines
+        self.backup_count = backup_count
+        self.current_line_count = 0
+        super().__init__(filename, 'a', encoding, delay)
+
+    def shouldRollover(self, record):
+        self.current_line_count += 1
+        if self.current_line_count > self.max_lines:
+            self.current_line_count = 0  # Reset line count
+            return True
+        return False
+
+    def doRollover(self):
+        if self.stream:
+            self.stream.close()
+        self.rotate(self.baseFilename, f"{self.baseFilename}.1")
+        for i in range(self.backup_count - 1, 0, -1):
+            sfn = f"{self.baseFilename}.{i}"
+            dfn = f"{self.baseFilename}.{i+1}"
+            if os.path.exists(sfn):
+                os.rename(sfn, dfn)
+        if os.path.exists(self.baseFilename):
+            os.rename(self.baseFilename, f"{self.baseFilename}.1")
+        self.stream = self._open()
 
 def has_email_been_sent_today():
     if os.path.exists(LAST_EMAIL_SENT_FILE):
@@ -117,6 +161,10 @@ def build_html_email(expiring_domains, expiring_ssl):
     if expiring_domains:
         html_content += "<table><tr><th style='width: 50%;'>Domain</th><th style='width: 50%;'>WHOIS Expiry - (YYYY-MM-DD-UTC)</th></tr>"
         for domain in expiring_domains:
+            # Ensure `whois_expiry` is timezone-aware
+            if domain.whois_expiry and domain.whois_expiry.tzinfo is None:
+                domain.whois_expiry = domain.whois_expiry.replace(tzinfo=pytz.UTC)
+
             days_to_expiry = (domain.whois_expiry - datetime.datetime.now(pytz.UTC)).days  # Use aware datetime
             row_class = "yellow" if days_to_expiry > 7 else ("orange" if days_to_expiry > 0 else "red")
             html_content += f"<tr class='{row_class}'><td>{domain.domain_name}</td><td>{domain.whois_expiry}</td></tr>"
@@ -129,6 +177,10 @@ def build_html_email(expiring_domains, expiring_ssl):
     if expiring_ssl:
         html_content += "<table><tr><th style='width: 50%;'>Site</th><th style='width: 50%;'>SSL Expiry - (YYYY-MM-DD-UTC)</th></tr>"
         for subdomain in expiring_ssl:
+            # Ensure `expiry_date` is timezone-aware
+            if subdomain.expiry_date and subdomain.expiry_date.tzinfo is None:
+                subdomain.expiry_date = subdomain.expiry_date.replace(tzinfo=pytz.UTC)
+
             days_to_expiry = (subdomain.expiry_date - datetime.datetime.now(pytz.UTC)).days  # Use aware datetime
             row_class = "yellow" if days_to_expiry > 7 else ("orange" if days_to_expiry > 0 else "red")
             html_content += f"<tr class='{row_class}'><td>{subdomain.subdomain_name}</td><td>{subdomain.expiry_date}</td></tr>"
@@ -152,6 +204,7 @@ def build_html_email(expiring_domains, expiring_ssl):
 
     return html_content
 
+
 def send_email(to_address, subject, body_content, from_address="Symphony Certificate and Domain Monitor <admin@certificate.monitor>"):
     command = f'echo "{body_content}" | mail -s "{subject}" -a "From: {from_address}" -a "Content-Type: text/html" {to_address}'
     logging.info(f"Executing email command: {command}")
@@ -166,44 +219,68 @@ def update_expiry_data():
         logging.info("Starting expiry data update.")
         now_utc = datetime.datetime.now(pytz.UTC)  # Current UTC time (aware)
         logging.info(f"Current UTC time: {now_utc}")
-        update_threshold = now_utc - datetime.timedelta(minutes=MAX_DATA_AGE)
+
         expiring_domains = []
         expiring_ssl = []
 
+        # Fetch all domains from the database
         all_domains = Domain.query.all()
         logging.info(f"Fetched {len(all_domains)} domains from the database.")
 
         for domain in all_domains:
-            # Check WHOIS expiry for domain
-            logging.info(f"Checking WHOIS expiry for domain {domain.domain_name}")
+            # Refresh WHOIS expiry for the domain
+            logging.info(f"Refreshing WHOIS expiry for domain {domain.domain_name}")
+            whois_expiry, _ = get_whois_expiry(domain.domain_name)  # Call the existing function
+
+            if whois_expiry:
+                domain.whois_expiry = whois_expiry  # Update with the new expiry
+                domain.last_update = now_utc  # Update the last_update timestamp
+                db.session.commit()
+                logging.info(f"Updated WHOIS expiry for {domain.domain_name}: {whois_expiry}")
+            else:
+                logging.warning(f"Failed to refresh WHOIS expiry for {domain.domain_name}")
+
+            # Check if the domain's WHOIS expiry is within 30 days
             if domain.whois_expiry:
-                # Ensure whois_expiry is timezone-aware (in UTC)
+                # Ensure `whois_expiry` is timezone-aware
                 if domain.whois_expiry.tzinfo is None:
                     domain.whois_expiry = domain.whois_expiry.replace(tzinfo=pytz.UTC)
 
-                days_to_expiry = (domain.whois_expiry - now_utc).days
-                logging.info(f"Domain {domain.domain_name} expires in {days_to_expiry} days.")
-                if days_to_expiry <= 30:
+                # Check if the WHOIS expiry is within 30 days
+                if (domain.whois_expiry - now_utc).days <= 30:
                     expiring_domains.append(domain)
 
-            # Check SSL expiry for subdomains
+            # Refresh SSL expiry for all subdomains of the domain
             subdomains = Subdomain.query.filter_by(domain_id=domain.id).all()
-            logging.info(f"Checking {len(subdomains)} subdomains for domain {domain.domain_name}")
+            logging.info(f"Refreshing {len(subdomains)} subdomains for domain {domain.domain_name}")
 
             for subdomain in subdomains:
-                logging.info(f"Checking SSL expiry for subdomain {subdomain.subdomain_name}")
+                logging.info(f"Refreshing SSL expiry for subdomain {subdomain.subdomain_name}")
+                expiry_date, verification_status = get_certificate_expiry(subdomain.subdomain_name)  # Call the existing function
+
+                if expiry_date:
+                    subdomain.expiry_date = expiry_date  # Update with the new expiry
+                    subdomain.verification_status = verification_status  # Update the verification status
+                    subdomain.last_update = now_utc  # Update the last_update timestamp
+                    db.session.commit()
+                    logging.info(f"Updated SSL expiry for {subdomain.subdomain_name}: {expiry_date}")
+                else:
+                    logging.warning(f"Failed to refresh SSL expiry for {subdomain.subdomain_name}")
+                    subdomain.verification_status = 'grey'  # Mark unreachable
+                    subdomain.last_update = now_utc  # Update the last_update timestamp
+                    db.session.commit()
+
+                # Check if the subdomain's SSL expiry is within 30 days
                 if subdomain.expiry_date:
-                    # Ensure expiry_date is timezone-aware (in UTC)
+                    # Ensure `expiry_date` is timezone-aware
                     if subdomain.expiry_date.tzinfo is None:
                         subdomain.expiry_date = subdomain.expiry_date.replace(tzinfo=pytz.UTC)
 
-                    days_to_expiry = (subdomain.expiry_date - now_utc).days
-                    logging.info(f"Subdomain {subdomain.subdomain_name} expires in {days_to_expiry} days.")
-                    if days_to_expiry <= 30:
-                        logging.info(f"Subdomain {subdomain.subdomain_name} added to expiring SSL list.")
+                    # Check if the SSL expiry is within 30 days
+                    if (subdomain.expiry_date - now_utc).days <= 30:
                         expiring_ssl.append(subdomain)
 
-        # Now check if there are any expiring items to send an email
+        # Send an alert if there are any expiring domains or SSL certificates
         if expiring_domains or expiring_ssl:
             logging.info(f"Found {len(expiring_domains)} expiring domains and {len(expiring_ssl)} expiring SSL certificates.")
             if not has_email_been_sent_today():
@@ -217,8 +294,6 @@ def update_expiry_data():
                 logging.info("Email has already been sent today, skipping email.")
         else:
             logging.info("No expiring items found.")
-
-
 
 def main():
     while True:

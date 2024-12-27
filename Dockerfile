@@ -1,7 +1,7 @@
 FROM python:3.10-slim
 
 # Install required packages including Postfix
-RUN apt-get update && apt-get install -y curl iputils-ping dnsutils whois postfix mailutils
+RUN apt-get update && apt-get install -y curl iputils-ping dnsutils whois postfix mailutils postgresql-client
 
 # Set up the working directory
 WORKDIR /cert-monitor

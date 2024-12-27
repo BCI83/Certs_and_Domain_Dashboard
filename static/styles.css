@@ -115,7 +115,7 @@ a:hover {
     background-color: white;
     padding: 20px;
     border-radius: 10px;
-    width: 300px;
+    width: 400px;
     text-align: center;
 }
 
@@ -218,3 +218,26 @@ a:hover {
     background-color: steelblue;
     color: white;
 }
+
+.db-actions {
+    margin: 20px 0;
+}
+
+.export-button, .import-button {
+    color: lightsteelblue;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: bold;
+    padding: 5px 10px;
+    background-color: #444;
+    border-radius: 5px;
+}
+/*
+.export-button:hover, .import-button:hover {
+    background-color: #45a049;
+}
+
+input[type="file"] {
+    margin-right: 10px;
+}
+*/

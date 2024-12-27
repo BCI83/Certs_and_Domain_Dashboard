@@ -10,6 +10,8 @@
     <div class="navbar">
         {% if current_user.is_authenticated %}
             <a href="/logout" class="logout-button">Logout</a>
+        {% else %}
+            <a href="/login" class="login-button">Login</a>
         {% endif %}
     </div>
 
@@ -24,11 +26,35 @@
         <h1>Domain and Certificate Expiry Dashboard</h1>
     </div>
 
+    <!-- Import/Export Database Buttons -->
+    {% if current_user.is_authenticated %}
+    <div class="export-container">
+        <a href="{{ url_for('export_db') }}" class="export-button">Export Database</a>
+    </div>
+    <div class="db-actions">
+        <button onclick="showImportModal()" class="import-button">Import Database</button>
+    </div>
+    {% endif %}
+
     <!-- Form to add new site -->
     <form method="POST" action="{{ url_for('add_site_route') }}">
         <input type="text" name="domain" placeholder="sub.domain.com">
         <input type="submit" value="Add Site">
     </form>
+
+    <div id="import-modal" class="modal">
+        <div class="modal-content">
+            <span id="import-modal-text">Choose a database file to import:</span>
+            <form action="{{ url_for('import_db') }}" method="POST" enctype="multipart/form-data">
+                <label for="import-file">File:</label>
+                <input type="file" id="import-file" name="import_file" accept=".sql" required>
+                <div class="modal-actions">
+                    <button type="submit" class="confirm-button">Import</button>
+                    <button type="button" onclick="closeImportModal()" class="cancel-button">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <!-- Domain columns container -->
     <div class="domain-columns-container">
@@ -40,7 +66,7 @@
                     <!-- WHOIS lease expiry date for main domain -->
                     <div class="lease-expiry">
                         {% if site_list[0]['whois_expiry'] %}
-                            {% set whois_color = 'green' if site_list[0]['whois_expiry'] > now + timedelta(days=30) else 'orange' if site_list[0]['whois_expiry'] > now + timedelta(days=7) else 'red' %}
+                            {% set whois_color = 'green' if site_list[0]['whois_expiry'] > now + timedelta(days=30) else 'yellow' if now + timedelta(days=7) < site_list[0]['whois_expiry'] <= now + timedelta(days=30) else 'orange' if now <= site_list[0]['whois_expiry'] <= now + timedelta(days=7) else 'red' %}
                             <span style="color: lightsteelblue;">
                                 Domain Lease Expiry -
                                 <span style="color: {{ whois_color }};">{{ site_list[0]['whois_expiry'].strftime('%d %b %Y') }}</span>
@@ -49,38 +75,37 @@
                     </div>
 
                     <!-- Subdomain List -->
-            <ul>
-                {% for site in site_list[1:] %}
-                    {% if site['verification_status'] == 'grey' %}
-                        <li style="color: grey;">
-                            <button class="remove-button" onclick="confirmDelete('{{ site['domain'] }}')" title="Delete">🗑️</button>
-                            <span style="color: grey;">Unreachable</span> -
-                            <span style="color: grey;" title="If this server is in AWS a rule likely needs to be configured for https:// connections from this server's IP/32">✘</span>
-                            <a href="{{ url_for('subdomain_detail', subdomain_id=site['id']) }}" style="color: lightsteelblue;">
-                                {{ site['domain'] }}
-                            </a>
-                        </li>
-                    {% else %}
-                        <!-- Existing logic for reachable subdomains -->
-                        {% set color = 'green' if site['expiry'] and site['expiry'] > now + timedelta(days=30) else 'yellow' if site['expiry'] and site['expiry'] > now + timedelta(days=7) else 'orange' if site['expiry'] and site['expiry'] > now else 'red' %}
-                        <li style="color: {{ color }};">
-                            <button class="remove-button" onclick="confirmDelete('{{ site['domain'] }}')" title="Delete">🗑️</button>
-                            {% if site['expiry'] %}
-                                <span title="{{ site['expiry'].strftime('%H:%M:%S UTC') }}">
-                                    {{ site['expiry'].strftime('%d %b %Y') }}
-                                </span> -
+                    <ul>
+                        {% for site in site_list[1:] %}
+                            {% if site['verification_status'] == 'grey' %}
+                                <li style="color: grey;">
+                                    <button class="remove-button" onclick="confirmDelete('{{ site['domain'] }}')" title="Delete">🗑️</button>
+                                    <span style="color: grey;">Unreachable</span> -
+                                    <span style="color: grey;" title="If this server is in AWS a rule likely needs to be configured for https:// connections from this server's IP/32">✘</span>
+                                    <a href="{{ url_for('subdomain_detail', subdomain_id=site['id']) }}" style="color: lightsteelblue;">
+                                        {{ site['domain'] }}
+                                    </a>
+                                </li>
                             {% else %}
-                                <span style="color: red;">Unknown</span> -
-                                <span style="color: red;" title="No certificate info">✘</span>
+                                {% set color = 'green' if site['expiry'] and site['expiry'] > now + timedelta(days=30) else 'yellow' if site['expiry'] and site['expiry'] > now + timedelta(days=7) else 'orange' if site['expiry'] and site['expiry'] > now else 'red' %}
+                                <li>
+                                    <button class="remove-button" onclick="confirmDelete('{{ site['domain'] }}')" title="Delete">🗑️</button>
+                                    {% if site['expiry'] %}
+                                        <span style="color: {{ color }};" title="{{ site['expiry'].strftime('%H:%M:%S UTC') }}">
+                                            {{ site['expiry'].strftime('%d %b %Y') }}
+                                        </span> -
+                                    {% else %}
+                                        <span style="color: red;">Unknown</span> -
+                                        <span style="color: red;" title="No certificate info">✘</span>
+                                    {% endif %}
+                                    <span style="color: {{ 'green' if site['verification_status'] == 'green' else 'red' }};" title="Cert Chain {{ 'Verified' if site['verification_status'] == 'green' else 'Unverified' }}">✔</span>
+                                    <a href="{{ url_for('subdomain_detail', subdomain_id=site['id']) }}" style="color: lightsteelblue;">
+                                        {{ site['domain'] }}
+                                    </a>
+                                </li>
                             {% endif %}
-                            <a href="{{ url_for('subdomain_detail', subdomain_id=site['id']) }}" style="color: lightsteelblue;">
-                                {{ site['domain'] }}
-                            </a>
-                        </li>
-                    {% endif %}
-                {% endfor %}
-            </ul>
-
+                        {% endfor %}
+                    </ul>
                 </div>
             {% endfor %}
         {% else %}
@@ -99,58 +124,20 @@
     </div>
 
     <script>
-        let currentSite = '';
-
-        function confirmDelete(site) {
-                // Check if the user is logged in by making an AJAX request
-                fetch('/check_login', {
-                        method: 'GET',
-                        credentials: 'include'
-                }).then(response => response.json())
-                  .then(data => {
-                          if (data.logged_in) {
-                                  // If the user is logged in, show the confirmation modal
-                                  currentSite = site;
-                                  document.getElementById('modal-text').textContent = `Are you sure you want to remove ${site}?`;
-                                  document.getElementById('confirmation-modal').style.display = 'flex';
-                          } else {
-                                  // If the user is not logged in, immediately redirect to the login page
-                                  window.location.href = "/login";
-                          }
-                  }).catch(error => {
-                          console.error('Error checking login status:', error);
-                  });
+        // Modal handling for Export
+        function showExportModal() {
+            document.getElementById('export-modal').style.display = 'flex';
+        }
+        function closeExportModal() {
+            document.getElementById('export-modal').style.display = 'none';
         }
 
-        function closeModal() {
-            document.getElementById('confirmation-modal').style.display = 'none';
-            currentSite = '';
+        // Modal handling for Import
+        function showImportModal() {
+            document.getElementById('import-modal').style.display = 'flex';
         }
-
-        function confirmDeletion() {
-                if (currentSite) {
-                        const cleanedSite = currentSite.replace(/^https?:\/\//, '').replace('/', '').trim();
-
-                        // Proceed with the deletion attempt directly; if not logged in, Flask will handle the redirect
-                        fetch(`/delete_site/${encodeURIComponent(cleanedSite)}`, {
-                                method: 'POST',
-                                headers: {
-                                        'Content-Type': 'application/json'
-                                }
-                        }).then(response => {
-                                if (response.ok) {
-                                        window.location.reload();  // Reload the page to reflect changes
-                                } else if (response.status === 401 || response.redirected) {
-                                        // If not logged in or redirected, go to login page
-                                        window.location.href = "/login";  // Redirect to login if not authenticated
-                                } else {
-                                        console.error("Error deleting site:", response.status);
-                                }
-                        }).catch(error => {
-                                console.error('Fetch error during deletion:', error);
-                        });
-                }
-                closeModal();  // Close the modal after the attempt
+        function closeImportModal() {
+            document.getElementById('import-modal').style.display = 'none';
         }
     </script>
 </body>

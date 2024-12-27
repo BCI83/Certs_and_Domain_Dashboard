@@ -9,7 +9,7 @@ services:
       - 172.31.11.188
       - 8.8.4.4
     ports:
-      - "8001:80"
+      - "8082:80"
     env_file:
       - config_vars.env
     restart: always

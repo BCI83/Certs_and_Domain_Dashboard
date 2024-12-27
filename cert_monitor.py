@@ -1,5 +1,5 @@
 from flask_login import LoginManager, UserMixin, login_required, login_user, logout_user, current_user # type: ignore
-from flask import Flask, render_template, redirect, url_for, request, jsonify
+from flask import Flask, render_template, redirect, url_for, request, jsonify, send_file, flash, redirect
 from flask_sqlalchemy import SQLAlchemy # type: ignore
 import datetime
 from datetime import timedelta
@@ -11,6 +11,8 @@ import OpenSSL # type: ignore
 import socket
 import logging
 import subprocess
+import io
+from werkzeug.utils import secure_filename
 import requests
 
 # Get the logging level from the environment variable (default to INFO if not set)
@@ -21,7 +23,7 @@ logging.basicConfig(level=getattr(logging, log_level, logging.INFO))
 SQLALCHEMY_DATABASE_URI = str(os.getenv('SQLALCHEMY_DATABASE_URI'))
 
 ADMIN_USERNAME = "admin"
-ADMIN_PASSWORD = "P@$$w0rd"
+ADMIN_PASSWORD = str(os.getenv('ADMIN_PASS'))
 
 app = Flask(__name__)
 
@@ -77,6 +79,61 @@ def create_tables():
 
 # Call the function to create tables
 create_tables()
+
+# Route to export the database
+@app.route('/export_db', methods=['GET'])
+@login_required
+def export_db():
+    try:
+        # Path to export the database
+        db_export_path = "/tmp/exported_database.sql"
+
+        # Use `pg_dump` to export the entire database schema and data
+        export_command = f"pg_dump --dbname=postgresql://certmonitoruser:Passw0rd@db:5432/certmonitor --no-owner --no-privileges --file={db_export_path}"
+        result = os.system(export_command)
+
+        # Check if the export command succeeded
+        if result != 0:
+            logging.error("Database export failed.")
+            return "Failed to export database.", 500
+
+        # Serve the file as a download
+        return send_file(db_export_path, as_attachment=True, download_name="expiry_db_export.sql")
+    except Exception as e:
+        logging.error(f"Error during database export: {e}")
+        return "Failed to export database.", 500
+
+# Route to import the database
+@app.route('/import_db', methods=['POST'])
+@login_required
+def import_db():
+    try:
+        if 'file' not in request.files:
+            flash("No file part")
+            return redirect(request.url)
+        
+        file = request.files['file']
+
+        if file.filename == '':
+            flash("No selected file")
+            return redirect(request.url)
+        
+        # Save the uploaded file securely
+        filename = secure_filename(file.filename)
+        file_path = os.path.join("/tmp", filename)
+        file.save(file_path)
+
+        # Command to restore the database
+        command = f"psql {SQLALCHEMY_DATABASE_URI} < {file_path}"
+
+        # Execute the import command
+        os.system(command)
+
+        flash("Database imported successfully!")
+        return redirect(url_for('dashboard'))
+    except Exception as e:
+        logging.error(f"Failed to import the database: {e}")
+        return "Failed to import database", 500
 
 def get_certificate_expiry(domain):
     domain = domain.replace("https://", "").replace("http://", "")
