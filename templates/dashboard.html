@@ -47,7 +47,7 @@
             <span id="import-modal-text">Choose a database file to import:</span>
             <form action="{{ url_for('import_db') }}" method="POST" enctype="multipart/form-data">
                 <label for="import-file">File:</label>
-                <input type="file" id="import-file" name="import_file" accept=".sql" required>
+                <input type="file" id="import-file" name="file" accept=".sql" required>
                 <div class="modal-actions">
                     <button type="submit" class="confirm-button">Import</button>
                     <button type="button" onclick="closeImportModal()" class="cancel-button">Cancel</button>

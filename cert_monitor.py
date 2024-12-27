@@ -107,17 +107,21 @@ def export_db():
 @app.route('/import_db', methods=['POST'])
 @login_required
 def import_db():
-    temp_file_path = None  # Initialize the variable
+    temp_file_path = None
     try:
         # Get the uploaded file
         file = request.files.get('file')
 
-        # Ensure a file is selected
+        # Debug logging
         if not file:
+            logging.error("No file uploaded.")
             return "No file selected.", 400
+
+        logging.info(f"File uploaded: {file.filename}")
 
         # Validate the file extension
         if not file.filename.lower().endswith('.sql'):
+            logging.error("Invalid file format.")
             return "Invalid file format. Please upload a .sql file.", 400
 
         # Save the uploaded file temporarily
@@ -133,7 +137,6 @@ def import_db():
             logging.error("Database import failed.")
             return "Failed to import database.", 500
 
-        # Return success message
         return "Database imported successfully.", 200
 
     except Exception as e:
