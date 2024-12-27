@@ -139,6 +139,31 @@
         function closeImportModal() {
             document.getElementById('import-modal').style.display = 'none';
         }
+        function confirmDeletion() {
+                if (currentSite) {
+                        const cleanedSite = currentSite.replace(/^https?:\/\//, '').replace('/', '').trim();
+
+                        // Proceed with the deletion attempt directly; if not logged in, Flask will handle the redirect
+                        fetch(`/delete_site/${encodeURIComponent(cleanedSite)}`, {
+                                method: 'POST',
+                                headers: {
+                                        'Content-Type': 'application/json'
+                                }
+                        }).then(response => {
+                                if (response.ok) {
+                                        window.location.reload();  // Reload the page to reflect changes
+                                } else if (response.status === 401 || response.redirected) {
+                                        // If not logged in or redirected, go to login page
+                                        window.location.href = "/login";  // Redirect to login if not authenticated
+                                } else {
+                                        console.error("Error deleting site:", response.status);
+                                }
+                        }).catch(error => {
+                                console.error('Fetch error during deletion:', error);
+                        });
+                }
+                closeModal();  // Close the modal after the attempt
+        }
     </script>
 </body>
 </html>

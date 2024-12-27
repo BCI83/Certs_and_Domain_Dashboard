@@ -108,32 +108,62 @@ def export_db():
 @login_required
 def import_db():
     try:
-        if 'file' not in request.files:
-            flash("No file part")
-            return redirect(request.url)
-        
-        file = request.files['file']
+        # Get the uploaded file
+        uploaded_file = request.files.get('db_file')
+        if not uploaded_file or not uploaded_file.filename.endswith('.sql'):
+            return "Invalid file format. Please upload a .sql file.", 400
 
-        if file.filename == '':
-            flash("No selected file")
-            return redirect(request.url)
-        
-        # Save the uploaded file securely
-        filename = secure_filename(file.filename)
-        file_path = os.path.join("/tmp", filename)
-        file.save(file_path)
+        # Save the uploaded file temporarily
+        file_path = "/tmp/uploaded_database.sql"
+        uploaded_file.save(file_path)
 
-        # Command to restore the database
-        command = f"psql {SQLALCHEMY_DATABASE_URI} < {file_path}"
+        # Validate the SQL file for required tables and columns
+        validation_result = validate_sql_file(file_path)
+        if not validation_result['valid']:
+            logging.error(f"Invalid database structure: {validation_result['error']}")
+            return f"Invalid database structure: {validation_result['error']}", 400
 
-        # Execute the import command
-        os.system(command)
+        # Overwrite the database using `psql`
+        import_command = f"psql --dbname=postgresql://your_db_user:your_db_password@your_db_host/your_db_name < {file_path}"
+        result = os.system(import_command)
 
-        flash("Database imported successfully!")
+        # Check if the import command succeeded
+        if result != 0:
+            logging.error("Database import failed.")
+            return "Failed to import database.", 500
+
         return redirect(url_for('dashboard'))
     except Exception as e:
-        logging.error(f"Failed to import the database: {e}")
-        return "Failed to import database", 500
+        logging.error(f"Error during database import: {e}")
+        return "Failed to import database.", 500
+
+def validate_sql_file(file_path):
+    """
+    Validate that the SQL file contains the expected tables and columns.
+    """
+    required_tables = {
+        "domain": ["id", "domain_name", "whois_expiry", "last_update"],
+        "subdomain": ["id", "subdomain_name", "expiry_date", "verification_status", "domain_id", "notes", "last_update"],
+    }
+
+    try:
+        # Read the file and parse the SQL commands
+        with open(file_path, "r") as file:
+            sql_content = file.read().lower()
+
+        # Check for required tables and columns
+        for table, columns in required_tables.items():
+            if f"create table {table}" not in sql_content:
+                return {"valid": False, "error": f"Missing table: {table}"}
+
+            for column in columns:
+                if f"{column}" not in sql_content:
+                    return {"valid": False, "error": f"Missing column '{column}' in table '{table}'"}
+
+        return {"valid": True}
+    except Exception as e:
+        logging.error(f"Error validating SQL file: {e}")
+        return {"valid": False, "error": "Unable to validate file"}
 
 def get_certificate_expiry(domain):
     domain = domain.replace("https://", "").replace("http://", "")
@@ -147,7 +177,7 @@ def get_certificate_expiry(domain):
     # First attempt: verified connection with a timeout of 5 seconds
     try:
         context = ssl.create_default_context()
-        with socket.create_connection((hostname, port), timeout=5) as sock:  # Shortened timeout to 5 seconds
+        with socket.create_connection((hostname, port), timeout=2) as sock:  # Shortened timeout to 5 seconds
             with context.wrap_socket(sock, server_hostname=hostname) as ssock:
                 cert = ssock.getpeercert(True)
                 cert_pem = ssl.DER_cert_to_PEM_cert(cert)
@@ -162,7 +192,7 @@ def get_certificate_expiry(domain):
     # Second attempt: unverified connection with a timeout of 5 seconds
     try:
         context = ssl._create_unverified_context()
-        with socket.create_connection((hostname, port), timeout=5) as sock:  # Shortened timeout to 5 seconds
+        with socket.create_connection((hostname, port), timeout=2) as sock:  # Shortened timeout to 5 seconds
             with context.wrap_socket(sock, server_hostname=hostname) as ssock:
                 cert = ssock.getpeercert(True)
                 cert_pem = ssl.DER_cert_to_PEM_cert(cert)
