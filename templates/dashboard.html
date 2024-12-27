@@ -139,30 +139,43 @@
         function closeImportModal() {
             document.getElementById('import-modal').style.display = 'none';
         }
-        function confirmDeletion() {
-                if (currentSite) {
-                        const cleanedSite = currentSite.replace(/^https?:\/\//, '').replace('/', '').trim();
+        let currentSite = ''; // Declare the global variable to store the current site for deletion.
 
-                        // Proceed with the deletion attempt directly; if not logged in, Flask will handle the redirect
-                        fetch(`/delete_site/${encodeURIComponent(cleanedSite)}`, {
-                                method: 'POST',
-                                headers: {
-                                        'Content-Type': 'application/json'
-                                }
-                        }).then(response => {
-                                if (response.ok) {
-                                        window.location.reload();  // Reload the page to reflect changes
-                                } else if (response.status === 401 || response.redirected) {
-                                        // If not logged in or redirected, go to login page
-                                        window.location.href = "/login";  // Redirect to login if not authenticated
-                                } else {
-                                        console.error("Error deleting site:", response.status);
-                                }
-                        }).catch(error => {
-                                console.error('Fetch error during deletion:', error);
-                        });
-                }
-                closeModal();  // Close the modal after the attempt
+        function confirmDelete(site) {
+            currentSite = site; // Assign the selected site to the global variable.
+            document.getElementById('modal-text').textContent = `Are you sure you want to remove ${site}?`;
+            document.getElementById('confirmation-modal').style.display = 'flex';
+        }
+
+        function confirmDeletion() {
+            if (currentSite) {
+                const cleanedSite = encodeURIComponent(currentSite);
+
+                fetch(`/delete_site/${cleanedSite}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                    .then(response => {
+                        if (response.ok) {
+                            window.location.reload(); // Reload the page to reflect changes.
+                        } else if (response.status === 401 || response.redirected) {
+                            window.location.href = "/login"; // Redirect to login if not authenticated.
+                        } else {
+                            console.error("Error deleting site:", response.status);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Fetch error during deletion:', error);
+                    });
+            }
+            closeModal(); // Close the modal after the attempt.
+        }
+
+        function closeModal() {
+            document.getElementById('confirmation-modal').style.display = 'none';
+            currentSite = ''; // Reset the global variable.
         }
     </script>
 </body>

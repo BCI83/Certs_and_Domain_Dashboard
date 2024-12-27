@@ -443,37 +443,39 @@ def subdomain_detail(subdomain_id):
 
 
 @app.route('/delete_site/<domain>', methods=['POST'])
-@login_required  # This ensures the user is logged in before deleting
+@login_required
 def delete_site(domain):
     try:
+        logging.info(f"Attempting to delete site: {domain}")
+        
         # Find the subdomain in the database
         subdomain = Subdomain.query.filter_by(subdomain_name=domain).first()
 
         if subdomain:
-            # Delete the subdomain
             db.session.delete(subdomain)
             db.session.commit()
-            logging.info(f"Removed subdomain from DB: {domain}")
+            logging.info(f"Removed subdomain: {domain}")
 
-            # Check if the domain has any other subdomains
+            # Check if the main domain has any remaining subdomains
             remaining_subdomains = Subdomain.query.filter_by(domain_id=subdomain.domain_id).count()
 
-            # If no other subdomains remain, delete the main domain
+            # If no subdomains remain, delete the main domain
             if remaining_subdomains == 0:
-                main_domain = Domain.query.filter_by(id=subdomain.domain_id).first()
+                main_domain = Domain.query.get(subdomain.domain_id)
                 if main_domain:
                     db.session.delete(main_domain)
                     db.session.commit()
-                    logging.info(f"Removed domain from DB: {main_domain.domain_name}")
+                    logging.info(f"Removed main domain: {main_domain.domain_name}")
 
-            return redirect(url_for('dashboard'))  # Redirect to dashboard on success
+            return "Subdomain deleted", 200
         else:
-            logging.error(f"Subdomain not found in DB: {domain}")
-            return 'Subdomain not found', 404  # Not found
+            logging.warning(f"Subdomain not found: {domain}")
+            return "Subdomain not found", 404
 
     except Exception as e:
         logging.error(f"Error deleting site {domain}: {e}")
-        return str(e), 500  # Server error
+        return str(e), 500
+
 
 @app.route('/site/<domain>')
 @login_required
