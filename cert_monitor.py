@@ -107,30 +107,29 @@ def export_db():
 @app.route('/import_db', methods=['POST'])
 @login_required
 def import_db():
-    temp_file_path = None
     try:
-        # Get the uploaded file
-        file = request.files.get('file')
-
-        # Debug logging
-        if not file:
-            logging.error("No file uploaded.")
+        # Check if a file was uploaded
+        if 'file' not in request.files:
             return "No file selected.", 400
-
-        logging.info(f"File uploaded: {file.filename}")
-
-        # Validate the file extension
-        if not file.filename.lower().endswith('.sql'):
-            logging.error("Invalid file format.")
+        uploaded_file = request.files['file']
+        if uploaded_file.filename == '':
+            return "No file selected.", 400
+        if not uploaded_file.filename.endswith('.sql'):
             return "Invalid file format. Please upload a .sql file.", 400
 
         # Save the uploaded file temporarily
-        temp_file_path = f"/tmp/{file.filename}"
-        file.save(temp_file_path)
+        temp_file_path = f"/tmp/{uploaded_file.filename}"
+        uploaded_file.save(temp_file_path)
 
-        # Use `psql` to import the database
-        import_command = f"psql --username=certmonitoruser --host=db --port=5432 --dbname=certmonitor -f {temp_file_path}"
+        # Use `PGPASSWORD` inline in the command to provide the password
+        import_command = (
+            f"PGPASSWORD='Passw0rd' psql --dbname=postgresql://certmonitoruser@db:5432/certmonitor "
+            f"--file={temp_file_path}"
+        )
         result = os.system(import_command)
+
+        # Remove the temporary file
+        os.remove(temp_file_path)
 
         # Check if the import command succeeded
         if result != 0:
@@ -138,16 +137,9 @@ def import_db():
             return "Failed to import database.", 500
 
         return "Database imported successfully.", 200
-
     except Exception as e:
         logging.error(f"Error during database import: {e}")
         return "Failed to import database.", 500
-
-    finally:
-        # Ensure the temporary file is deleted
-        if temp_file_path and os.path.exists(temp_file_path):
-            os.remove(temp_file_path)
-
 
 def validate_sql_file(file_path):
     """
